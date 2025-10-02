@@ -1,0 +1,172 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// --- Enums ---
+
+enum UserRole {
+    GUEST
+    RECEPTIONIST
+    ADMIN
+}
+
+enum BookingStatus {
+    PENDING
+    CONFIRMED
+    CHECKED_IN
+    CHECKED_OUT
+    CANCELLED
+}
+
+enum RoomStatus {
+    AVAILABLE
+    OCCUPIED
+    MAINTENANCE
+    CLEANING
+}
+
+enum PaymentStatus {
+    PENDING
+    COMPLETED
+    REFUNDED
+    FAILED
+}
+
+// --- Таблиці ---
+
+model User {
+    id           Int      @id @default(autoincrement())
+    email        String   @unique
+    passwordHash String
+    fullName     String?
+    phone        String?
+    role         UserRole @default(GUEST)
+    createdAt    DateTime @default(now())
+
+    bookings      Booking[]
+    refreshTokens RefreshToken[]
+    maintenance   MaintenanceLog[]
+}
+
+model RoomType {
+    id          Int     @id @default(autoincrement())
+    name        String
+    description String? @db.Text
+    basePrice   Decimal @db.Decimal(10, 2)
+    capacity    Int
+
+    rooms     Room[]
+    images    RoomImage[]
+    amenities RoomAmenity[]
+}
+
+model Room {
+    id         Int        @id @default(autoincrement())
+    roomNumber String     @unique
+    floor      Int?
+    status     RoomStatus @default(AVAILABLE)
+
+    roomTypeId Int
+    roomType   RoomType @relation(fields: [roomTypeId], references: [id])
+
+    bookings    Booking[]
+    maintenance MaintenanceLog[]
+}
+
+model Amenity {
+    id    Int           @id @default(autoincrement())
+    name  String        @unique
+    rooms RoomAmenity[]
+}
+
+// Зв'язуюча таблиця для Many-to-Many (Кімнати <-> Зручності)
+model RoomAmenity {
+    roomTypeId Int
+    amenityId  Int
+
+    roomType RoomType @relation(fields: [roomTypeId], references: [id])
+    amenity  Amenity  @relation(fields: [amenityId], references: [id])
+
+    @@id([roomTypeId, amenityId])
+}
+
+model Booking {
+    id              Int           @id @default(autoincrement())
+    checkInDate     DateTime
+    checkOutDate    DateTime
+    totalPrice      Decimal       @db.Decimal(10, 2)
+    status          BookingStatus @default(PENDING)
+    specialRequests String?       @db.Text
+    createdAt       DateTime      @default(now())
+
+    userId Int
+    user   User @relation(fields: [userId], references: [id])
+
+    roomId Int
+    room   Room @relation(fields: [roomId], references: [id])
+
+    payment Payment?
+    review  Review?
+}
+
+model Payment {
+    id            Int           @id @default(autoincrement())
+    amount        Decimal       @db.Decimal(10, 2)
+    paymentMethod String
+    status        PaymentStatus @default(PENDING)
+    transactionId String?       @unique
+    createdAt     DateTime      @default(now())
+
+    bookingId Int     @unique
+    booking   Booking @relation(fields: [bookingId], references: [id])
+}
+
+model Review {
+    id        Int      @id @default(autoincrement())
+    rating    Int
+    comment   String?  @db.Text
+    createdAt DateTime @default(now())
+
+    bookingId Int     @unique
+    booking   Booking @relation(fields: [bookingId], references: [id])
+}
+
+model MaintenanceLog {
+    id          Int       @id @default(autoincrement())
+    description String
+    startDate   DateTime  @default(now())
+    endDate     DateTime?
+    createdAt   DateTime  @default(now())
+
+    roomId Int
+    room   Room @relation(fields: [roomId], references: [id])
+
+    staffId Int
+    staff   User @relation(fields: [staffId], references: [id])
+}
+
+model RoomImage {
+    id        Int      @id @default(autoincrement())
+    url       String
+    isPrimary Boolean  @default(false)
+    altText   String?
+    createdAt DateTime @default(now())
+
+    roomTypeId Int
+    roomType   RoomType @relation(fields: [roomTypeId], references: [id])
+}
+
+model RefreshToken {
+    id        Int      @id @default(autoincrement())
+    token     String   @unique
+    expiresAt DateTime
+    createdAt DateTime @default(now())
+
+    userId Int
+    user   User @relation(fields: [userId], references: [id])
+}
