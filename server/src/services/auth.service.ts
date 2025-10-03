@@ -4,7 +4,12 @@ import prisma from '../lib/prisma.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
-export const register = async (email: string, password: string, fullName: string) => {
+export const register = async (
+    email: string,
+    password: string,
+    fullName: string,
+    phone: string,
+) => {
     // Хешуємо пароль
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -14,6 +19,7 @@ export const register = async (email: string, password: string, fullName: string
             email,
             passwordHash: hashedPassword,
             fullName,
+            phone,
         },
     });
 
