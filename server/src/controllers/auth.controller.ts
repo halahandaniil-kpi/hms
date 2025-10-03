@@ -20,3 +20,15 @@ export const login = async (req: Request, res: Response) => {
         res.status(401).json({ message: error.message });
     }
 };
+
+export const refresh = async (req: Request, res: Response) => {
+    try {
+        const { refreshToken } = req.body;
+        if (!refreshToken) return res.status(400).json({ message: 'Потрібен Refresh token' });
+
+        const newAccessToken = await AuthService.refresh(refreshToken);
+        res.json({ accessToken: newAccessToken });
+    } catch (error: any) {
+        res.status(401).json({ message: error.message });
+    }
+};
