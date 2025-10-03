@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import roomRoutes from './routes/room.routes.js';
+import authRoutes from './routes/auth.routes.js';
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ app.use(express.json());
 
 // Підключаємо роути
 app.use('/api/rooms', roomRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Hotel Management System is working!' });
