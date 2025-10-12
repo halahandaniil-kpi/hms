@@ -59,6 +59,7 @@ model RoomType {
     description String? @db.Text
     basePrice   Decimal @db.Decimal(10, 2)
     capacity    Int
+    bedType     String  @default("Стандартне ліжко")
 
     rooms     Room[]
     images    RoomImage[]
