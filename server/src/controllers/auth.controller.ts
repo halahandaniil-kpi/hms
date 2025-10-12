@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as AuthService from '../services/auth.service.js';
+import prisma from '../lib/prisma.js';
 
 export const register = async (req: Request, res: Response) => {
     try {
@@ -30,5 +31,20 @@ export const refresh = async (req: Request, res: Response) => {
         res.json({ accessToken: newAccessToken });
     } catch (error: any) {
         res.status(401).json({ message: error.message });
+    }
+};
+
+export const getMe = async (req: any, res: Response) => {
+    try {
+        const userId = req.user.userId;
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, email: true, fullName: true, role: true, phone: true },
+        });
+
+        if (!user) return res.status(404).json({ message: 'Користувача не знайдено' });
+        res.json(user);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };
