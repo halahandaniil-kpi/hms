@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { RoomsPage } from './pages/RoomsPage';
 import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -48,6 +49,7 @@ function App() {
                     <Routes>
                         <Route path="/" element={<RoomsPage />} />
                         <Route path="/login" element={<LoginPage />} />
+                        <Route path="/register" element={<RegisterPage />} />
                     </Routes>
                 </div>
             </BrowserRouter>
