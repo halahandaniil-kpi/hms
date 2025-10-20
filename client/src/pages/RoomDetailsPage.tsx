@@ -59,6 +59,7 @@ export const RoomDetailsPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [successType, setSuccessType] = useState<'CARD' | 'CASH' | null>(null);
 
     const [bookingData, setBookingData] = useState({
         checkIn: '',
@@ -119,6 +120,12 @@ export const RoomDetailsPage = () => {
         e.preventDefault();
         if (!user) return navigate('/login');
 
+        // Валідація на фронтенді (додатковий захист)
+        if (!bookingData.checkIn || !bookingData.checkOut) {
+            setError('Будь ласка, оберіть період проживання на календарі');
+            return;
+        }
+
         try {
             setError('');
             // Бронювання
@@ -138,6 +145,7 @@ export const RoomDetailsPage = () => {
             });
 
             setSuccess(true);
+            setSuccessType(bookingData.paymentMethod as 'CARD' | 'CASH');
             setTimeout(() => navigate('/'), 3000);
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
@@ -241,8 +249,27 @@ export const RoomDetailsPage = () => {
                         </div>
 
                         {success ? (
-                            <div className="bg-green-50 text-green-700 p-6 rounded-2xl text-center font-bold animate-bounce">
-                                🎉 Бронювання та оплата успішні!
+                            <div
+                                className={`p-6 rounded-2xl text-center font-bold animate-in zoom-in duration-300 ${
+                                    successType === 'CARD'
+                                        ? 'bg-green-50 text-green-700'
+                                        : 'bg-blue-50 text-blue-700'
+                                }`}
+                            >
+                                {successType === 'CARD' ? (
+                                    <>
+                                        <div className="text-2xl mb-2">💳 Оплата успішна!</div>
+                                        <p>Ваше бронювання підтверджено. Чекаємо на вас!</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="text-2xl mb-2">🗓️ Заброньовано!</div>
+                                        <p>
+                                            Ми чекаємо на вас. Оплату можна здійснити при заселенні
+                                            на ресепшині.
+                                        </p>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <form onSubmit={handleBookingAndPayment} className="space-y-4">

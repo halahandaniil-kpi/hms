@@ -10,6 +10,10 @@ export const createBooking = async (
     const start = new Date(checkIn);
     const end = new Date(checkOut);
 
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw new Error('Будь ласка, оберіть період проживання на календарі');
+    }
+
     if (start >= end) {
         throw new Error('Дата виїзду має бути пізніше за дату заїзду');
     }
