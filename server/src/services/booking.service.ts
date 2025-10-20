@@ -91,3 +91,20 @@ export const getUserBookings = async (userId: number) => {
         orderBy: { createdAt: 'desc' }, // Спочатку новіші замовлення
     });
 };
+
+export const getTakenDates = async (roomId: number) => {
+    const bookings = await prisma.booking.findMany({
+        where: {
+            roomId,
+            status: { in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+        },
+        select: { checkInDate: true, checkOutDate: true },
+    });
+
+    const maintenance = await prisma.maintenanceLog.findMany({
+        where: { roomId },
+        select: { startDate: true, endDate: true },
+    });
+
+    return { bookings, maintenance };
+};

@@ -20,7 +20,14 @@ export const getRoomById = async (id: number) => {
     return await prisma.room.findUnique({
         where: { id },
         include: {
-            roomType: true,
+            roomType: {
+                include: {
+                    images: true,
+                    amenities: {
+                        include: { amenity: true },
+                    },
+                },
+            },
         },
     });
 };

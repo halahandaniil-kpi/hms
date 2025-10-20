@@ -9,5 +9,6 @@ const router = Router();
 router.post('/', authenticate, BookingController.create);
 router.get('/my', authenticate, BookingController.getMyBookings);
 router.post('/review', authenticate, ReviewController.addReview);
+router.get('/room/:id/taken-dates', BookingController.getTakenDates);
 
 export default router;
