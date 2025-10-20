@@ -5,3 +5,19 @@
 body {
     @apply bg-slate-50 text-slate-900 antialiased;
 }
+
+/* Колір для вже заброньованих дат */
+.date-occupied {
+    @apply bg-yellow-400 text-white rounded-full !important;
+}
+
+/* Колір для дат на обслуговуванні */
+.date-maintenance {
+    @apply bg-red-500 text-white rounded-full !important;
+}
+
+/* Прибираємо стандартні іконки браузера */
+input[type='date']::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+}
