@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { BedDouble, Users, CheckCircle2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface Room {
     id: number;
@@ -116,9 +117,12 @@ export const RoomsPage = () => {
                                         за ніч
                                     </span>
                                 </div>
-                                <button className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
-                                    Забронювати
-                                </button>
+                                <Link
+                                    to={`/rooms/${room.id}`}
+                                    className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+                                >
+                                    Детальніше
+                                </Link>
                             </div>
                         </div>
                     </article>

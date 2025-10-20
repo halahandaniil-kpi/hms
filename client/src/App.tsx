@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { RoomsPage } from './pages/RoomsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { RoomDetailsPage } from './pages/RoomDetailsPage';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -50,6 +51,7 @@ function App() {
                         <Route path="/" element={<RoomsPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
+                        <Route path="/rooms/:id" element={<RoomDetailsPage />} />
                     </Routes>
                 </div>
             </BrowserRouter>
