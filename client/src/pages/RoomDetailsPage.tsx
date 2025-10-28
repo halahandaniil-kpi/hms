@@ -45,7 +45,10 @@ interface Room {
         description: string;
         capacity: number;
         bedType: string;
-        images: { url: string }[];
+        images: {
+            url: string;
+            isPrimary: boolean;
+        }[];
         amenities: { amenity: { name: string } }[];
     };
     reviews?: Review[];
@@ -195,6 +198,12 @@ export const RoomDetailsPage = () => {
         );
     if (!room) return <div className="p-20 text-center">Номер не знайдено</div>;
 
+    const primaryImage =
+        room.roomType.images.find((img) => img.isPrimary) || room.roomType.images[0];
+    const mainImageUrl =
+        primaryImage?.url ||
+        'https://www.ca.kayak.com/rimg/dimg/dynamic/186/2023/08/295ffd3a54bd51fc33810ce59382d1da.webp';
+
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
             <Link
@@ -209,10 +218,7 @@ export const RoomDetailsPage = () => {
                 <div className="lg:col-span-2">
                     <div className="rounded-3xl overflow-hidden shadow-2xl mb-8 bg-slate-200 aspect-video">
                         <img
-                            src={
-                                room.roomType.images[0]?.url ||
-                                'https://images.unsplash.com/photo-1590490360182-c33d57733427'
-                            }
+                            src={mainImageUrl}
                             className="w-full h-full object-cover"
                             alt={room.roomType.name}
                         />

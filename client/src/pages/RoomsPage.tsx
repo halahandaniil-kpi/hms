@@ -12,7 +12,10 @@ interface Room {
         description: string;
         capacity: number;
         bedType: string;
-        images: { url: string }[];
+        images: {
+            url: string;
+            isPrimary: boolean;
+        }[];
         amenities: {
             amenity: {
                 name: string;
@@ -55,100 +58,105 @@ export const RoomsPage = () => {
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {rooms.map((room) => (
-                    <article
-                        key={room.id}
-                        className="flex flex-col h-full group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300"
-                    >
-                        <div className="relative h-64 overflow-hidden">
-                            <img
-                                src={
-                                    room.roomType.images[0]?.url ||
-                                    'https://www.ca.kayak.com/rimg/dimg/dynamic/186/2023/08/295ffd3a54bd51fc33810ce59382d1da.webp'
-                                }
-                                alt={room.roomType.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                            <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-bold text-primary shadow-sm">
-                                №{room.roomNumber}
+                {rooms.map((room) => {
+                    const primaryImage =
+                        room.roomType.images.find((img) => img.isPrimary) ||
+                        room.roomType.images[0];
+                    const imageUrl =
+                        primaryImage?.url ||
+                        'https://www.ca.kayak.com/rimg/dimg/dynamic/186/2023/08/295ffd3a54bd51fc33810ce59382d1da.webp';
+                    return (
+                        <article
+                            key={room.id}
+                            className="flex flex-col h-full group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300"
+                        >
+                            <div className="relative h-64 overflow-hidden">
+                                <img
+                                    src={imageUrl}
+                                    alt={room.roomType.name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-bold text-primary shadow-sm">
+                                    №{room.roomNumber}
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="p-6 flex flex-col flex-grow">
-                            <h3 className="text-2xl font-bold text-slate-800 mb-2">
-                                {room.roomType.name}
-                            </h3>
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="flex text-yellow-400">
-                                    {[...Array(5)].map((_, i) => (
-                                        <Star
-                                            key={i}
-                                            size={16}
-                                            fill={
-                                                i < Math.round(room.roomType.averageRating || 0)
-                                                    ? 'currentColor'
-                                                    : 'none'
-                                            }
-                                        />
+                            <div className="p-6 flex flex-col flex-grow">
+                                <h3 className="text-2xl font-bold text-slate-800 mb-2">
+                                    {room.roomType.name}
+                                </h3>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="flex text-yellow-400">
+                                        {[...Array(5)].map((_, i) => (
+                                            <Star
+                                                key={i}
+                                                size={16}
+                                                fill={
+                                                    i < Math.round(room.roomType.averageRating || 0)
+                                                        ? 'currentColor'
+                                                        : 'none'
+                                                }
+                                            />
+                                        ))}
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-700">
+                                        {room.roomType.averageRating?.toFixed(1) || '0.0'}
+                                    </span>
+                                    <span className="text-sm text-slate-400">
+                                        ({room.roomType.reviewCount || 0} відгуків)
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-4 mb-4 text-slate-500 text-sm">
+                                    <span className="flex items-center gap-1">
+                                        <Users size={18} /> {room.roomType.capacity} особи
+                                    </span>
+                                    <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-md">
+                                        <BedDouble size={16} className="text-primary" />{' '}
+                                        {room.roomType.bedType}
+                                    </span>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 mb-6">
+                                    {room.roomType.amenities.slice(0, 3).map((item, index) => (
+                                        <span
+                                            key={index}
+                                            className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-slate-400"
+                                        >
+                                            <CheckCircle2 size={12} className="text-green-500" />
+                                            {item.amenity.name}
+                                        </span>
                                     ))}
+                                    {room.roomType.amenities.length > 3 && (
+                                        <span className="text-[10px] font-bold text-slate-400">
+                                            +{room.roomType.amenities.length - 3} більше
+                                        </span>
+                                    )}
                                 </div>
-                                <span className="text-sm font-bold text-slate-700">
-                                    {room.roomType.averageRating?.toFixed(1) || '0.0'}
-                                </span>
-                                <span className="text-sm text-slate-400">
-                                    ({room.roomType.reviewCount || 0} відгуків)
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-4 mb-4 text-slate-500 text-sm">
-                                <span className="flex items-center gap-1">
-                                    <Users size={18} /> {room.roomType.capacity} особи
-                                </span>
-                                <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-md">
-                                    <BedDouble size={16} className="text-primary" />{' '}
-                                    {room.roomType.bedType}
-                                </span>
-                            </div>
 
-                            <div className="flex flex-wrap gap-2 mb-6">
-                                {room.roomType.amenities.slice(0, 3).map((item, index) => (
-                                    <span
-                                        key={index}
-                                        className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-slate-400"
+                                <p className="text-slate-600 line-clamp-2 mb-6 text-sm leading-relaxed">
+                                    {room.roomType.description}
+                                </p>
+
+                                <div className="flex items-center justify-between pt-6 border-t border-slate-100 mt-auto">
+                                    <div>
+                                        <span className="block text-2xl font-black text-primary">
+                                            {room.roomType.basePrice} ₴
+                                        </span>
+                                        <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
+                                            за ніч
+                                        </span>
+                                    </div>
+                                    <Link
+                                        to={`/rooms/${room.id}`}
+                                        className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
                                     >
-                                        <CheckCircle2 size={12} className="text-green-500" />
-                                        {item.amenity.name}
-                                    </span>
-                                ))}
-                                {room.roomType.amenities.length > 3 && (
-                                    <span className="text-[10px] font-bold text-slate-400">
-                                        +{room.roomType.amenities.length - 3} більше
-                                    </span>
-                                )}
-                            </div>
-
-                            <p className="text-slate-600 line-clamp-2 mb-6 text-sm leading-relaxed">
-                                {room.roomType.description}
-                            </p>
-
-                            <div className="flex items-center justify-between pt-6 border-t border-slate-100 mt-auto">
-                                <div>
-                                    <span className="block text-2xl font-black text-primary">
-                                        {room.roomType.basePrice} ₴
-                                    </span>
-                                    <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
-                                        за ніч
-                                    </span>
+                                        Детальніше
+                                    </Link>
                                 </div>
-                                <Link
-                                    to={`/rooms/${room.id}`}
-                                    className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
-                                >
-                                    Детальніше
-                                </Link>
                             </div>
-                        </div>
-                    </article>
-                ))}
+                        </article>
+                    );
+                })}
             </div>
         </main>
     );
