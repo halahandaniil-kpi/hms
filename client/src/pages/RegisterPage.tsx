@@ -24,9 +24,8 @@ export const RegisterPage = () => {
 
         try {
             const res = await api.post('/auth/register', formData);
-
-            // Передаємо дані користувача та токен у глобальний стан
-            login(res.data.user, res.data.accessToken);
+            const { user, accessToken, refreshToken } = res.data;
+            login(user, accessToken, refreshToken);
 
             // Зберігаємо refresh токен
             if (res.data.refreshToken) {

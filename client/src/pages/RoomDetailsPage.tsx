@@ -120,7 +120,6 @@ export const RoomDetailsPage = () => {
         e.preventDefault();
         if (!user) return navigate('/login');
 
-        // Валідація на фронтенді (додатковий захист)
         if (!bookingData.checkIn || !bookingData.checkOut) {
             setError('Будь ласка, оберіть період проживання на календарі');
             return;

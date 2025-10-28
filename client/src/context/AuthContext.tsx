@@ -14,7 +14,7 @@ interface AuthContextType {
     user: User | null;
     token: string | null;
     loading: boolean;
-    login: (userData: User, token: string) => void;
+    login: (userData: User, accessToken: string, refreshToken: string) => void;
     logout: () => void;
 }
 
@@ -25,16 +25,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
 
-    const login = (userData: User, token: string) => {
+    const login = (userData: User, token: string, refreshToken: string) => {
         setUser(userData);
         setToken(token);
         localStorage.setItem('token', token);
+        localStorage.setItem('refreshToken', refreshToken);
     };
 
     const logout = () => {
         setUser(null);
         setToken(null);
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
     };
 
     useEffect(() => {
