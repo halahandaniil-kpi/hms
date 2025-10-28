@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
-import { BedDouble, Users, CheckCircle2 } from 'lucide-react';
+import { BedDouble, Users, CheckCircle2, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface Room {
@@ -18,6 +18,8 @@ interface Room {
                 name: string;
             };
         }[];
+        averageRating?: number;
+        reviewCount?: number;
     };
 }
 
@@ -76,7 +78,27 @@ export const RoomsPage = () => {
                             <h3 className="text-2xl font-bold text-slate-800 mb-2">
                                 {room.roomType.name}
                             </h3>
-
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="flex text-yellow-400">
+                                    {[...Array(5)].map((_, i) => (
+                                        <Star
+                                            key={i}
+                                            size={16}
+                                            fill={
+                                                i < Math.round(room.roomType.averageRating || 0)
+                                                    ? 'currentColor'
+                                                    : 'none'
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                                <span className="text-sm font-bold text-slate-700">
+                                    {room.roomType.averageRating?.toFixed(1) || '0.0'}
+                                </span>
+                                <span className="text-sm text-slate-400">
+                                    ({room.roomType.reviewCount || 0} відгуків)
+                                </span>
+                            </div>
                             <div className="flex items-center gap-4 mb-4 text-slate-500 text-sm">
                                 <span className="flex items-center gap-1">
                                     <Users size={18} /> {room.roomType.capacity} особи

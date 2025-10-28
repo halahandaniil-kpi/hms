@@ -13,6 +13,7 @@ import {
     CreditCard,
     Wallet,
     AlertCircle,
+    Star,
 } from 'lucide-react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -23,6 +24,16 @@ interface UnifiedDate {
     start: Date;
     end: Date;
     type: 'booking' | 'maintenance';
+}
+
+interface Review {
+    id: number;
+    rating: number;
+    comment: string;
+    createdAt: string;
+    booking: {
+        user: { fullName: string };
+    };
 }
 
 interface Room {
@@ -37,6 +48,7 @@ interface Room {
         images: { url: string }[];
         amenities: { amenity: { name: string } }[];
     };
+    reviews?: Review[];
 }
 
 interface ApiBooking {
@@ -237,6 +249,56 @@ export const RoomDetailsPage = () => {
                                 </span>
                             </div>
                         ))}
+                    </div>
+                    <div className="mt-12 pt-12 border-t border-slate-100">
+                        <h3 className="text-2xl font-bold mb-8 flex items-center gap-3">
+                            Відгуки гостей
+                            <span className="text-sm font-normal text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+                                {room.reviews?.length || 0}
+                            </span>
+                        </h3>
+
+                        {room.reviews && room.reviews.length > 0 ? (
+                            <div className="space-y-6">
+                                {room.reviews.map((review) => (
+                                    <div
+                                        key={review.id}
+                                        className="bg-slate-50 p-6 rounded-3xl border border-slate-100"
+                                    >
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <p className="font-bold text-slate-900">
+                                                    {review.booking.user.fullName}
+                                                </p>
+                                                <p className="text-xs text-slate-400">
+                                                    {new Date(review.createdAt).toLocaleDateString(
+                                                        'uk-UA',
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <div className="flex text-yellow-400 bg-white px-3 py-1 rounded-full shadow-sm border border-slate-100">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star
+                                                        key={i}
+                                                        size={14}
+                                                        fill={
+                                                            i < review.rating
+                                                                ? 'currentColor'
+                                                                : 'none'
+                                                        }
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <p className="text-slate-600 italic">"{review.comment}"</p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-slate-50 p-8 rounded-3xl text-center text-slate-400 border-2 border-dashed border-slate-200">
+                                Для цього номера ще немає відгуків. Будьте першим!
+                            </div>
+                        )}
                     </div>
                 </div>
 
