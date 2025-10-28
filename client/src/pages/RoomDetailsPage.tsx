@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../api/axios';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -53,7 +53,7 @@ export const RoomDetailsPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
-
+    const location = useLocation();
     const [room, setRoom] = useState<Room | null>(null);
     const [takenDates, setTakenDates] = useState<UnifiedDate[]>([]);
     const [loading, setLoading] = useState(true);
@@ -118,7 +118,10 @@ export const RoomDetailsPage = () => {
 
     const handleBookingAndPayment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user) return navigate('/login');
+        if (!user) {
+            navigate('/login', { state: { from: location.pathname } });
+            return;
+        }
 
         if (!bookingData.checkIn || !bookingData.checkOut) {
             setError('Будь ласка, оберіть період проживання на календарі');

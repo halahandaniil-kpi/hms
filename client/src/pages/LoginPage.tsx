@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import axios from 'axios';
@@ -10,7 +10,10 @@ export const LoginPage = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const { login } = useAuth();
+    const location = useLocation();
     const navigate = useNavigate();
+
+    const from = location.state?.from || '/';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -18,7 +21,7 @@ export const LoginPage = () => {
             const res = await api.post('/auth/login', { email, password });
             const { user, accessToken, refreshToken } = res.data;
             login(user, accessToken, refreshToken);
-            navigate('/');
+            navigate(from, { replace: true });
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
                 setError(err.response?.data?.message || 'Помилка входу');
