@@ -88,9 +88,11 @@ export const getUserBookings = async (userId: number) => {
         include: {
             room: {
                 include: {
-                    roomType: true,
+                    roomType: { include: { images: true } },
                 },
             },
+            payment: true,
+            review: true,
         },
         orderBy: { createdAt: 'desc' }, // Спочатку новіші замовлення
     });

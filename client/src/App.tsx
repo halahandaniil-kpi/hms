@@ -4,6 +4,7 @@ import { RoomsPage } from './pages/RoomsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { RoomDetailsPage } from './pages/RoomDetailsPage';
+import { MyBookingsPage } from './pages/MyBookingsPage';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -14,6 +15,14 @@ const Navbar = () => {
                     GRAND RESERVE
                 </Link>
                 <div className="flex gap-6 items-center font-bold text-sm uppercase tracking-widest">
+                    {user && (
+                        <Link
+                            to="/bookings/my"
+                            className="text-slate-600 hover:text-primary transition-colors"
+                        >
+                            Мої бронювання
+                        </Link>
+                    )}
                     <Link to="/" className="text-slate-600 hover:text-primary transition-colors">
                         Номери
                     </Link>
@@ -52,6 +61,7 @@ function App() {
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/rooms/:id" element={<RoomDetailsPage />} />
+                        <Route path="/bookings/my" element={<MyBookingsPage />} />
                     </Routes>
                 </div>
             </BrowserRouter>
