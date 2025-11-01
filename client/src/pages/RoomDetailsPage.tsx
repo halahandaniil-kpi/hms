@@ -14,6 +14,8 @@ import {
     Wallet,
     AlertCircle,
     Star,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -76,6 +78,8 @@ export const RoomDetailsPage = () => {
     const [success, setSuccess] = useState(false);
     const [successType, setSuccessType] = useState<'CARD' | 'CASH' | null>(null);
 
+    const [activeImgIndex, setActiveImgIndex] = useState(0);
+
     const [bookingData, setBookingData] = useState({
         checkIn: '',
         checkOut: '',
@@ -103,7 +107,15 @@ export const RoomDetailsPage = () => {
                     api.get(`/bookings/room/${id}/taken-dates`),
                 ]);
 
-                setRoom(roomRes.data);
+                const roomData: Room = roomRes.data;
+                setRoom(roomData);
+
+                // Встановлюємо початкове фото
+                if (roomData.roomType.images) {
+                    const primaryIdx = roomData.roomType.images.findIndex((img) => img.isPrimary);
+                    setActiveImgIndex(primaryIdx !== -1 ? primaryIdx : 0);
+                }
+
                 // Перетворюємо різні формати бази в один формат для фронтенду
                 const formattedBookings: UnifiedDate[] = datesRes.data.bookings.map(
                     (b: ApiBooking) => ({
@@ -130,6 +142,19 @@ export const RoomDetailsPage = () => {
         };
         fetchData();
     }, [id]);
+
+    // Функції для гортання слайдера
+    const nextImage = () => {
+        if (!room) return;
+        setActiveImgIndex((prev) => (prev + 1) % room.roomType.images.length);
+    };
+
+    const prevImage = () => {
+        if (!room) return;
+        setActiveImgIndex(
+            (prev) => (prev - 1 + room.roomType.images.length) % room.roomType.images.length,
+        );
+    };
 
     const handleBookingAndPayment = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -198,10 +223,8 @@ export const RoomDetailsPage = () => {
         );
     if (!room) return <div className="p-20 text-center">Номер не знайдено</div>;
 
-    const primaryImage =
-        room.roomType.images.find((img) => img.isPrimary) || room.roomType.images[0];
-    const mainImageUrl =
-        primaryImage?.url ||
+    const currentImageUrl =
+        room.roomType.images[activeImgIndex]?.url ||
         'https://www.ca.kayak.com/rimg/dimg/dynamic/186/2023/08/295ffd3a54bd51fc33810ce59382d1da.webp';
 
     return (
@@ -216,13 +239,60 @@ export const RoomDetailsPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                 {/* ЛІВА ЧАСТИНА */}
                 <div className="lg:col-span-2">
-                    <div className="rounded-3xl overflow-hidden shadow-2xl mb-8 bg-slate-200 aspect-video">
+                    {/* СЛАЙДЕР */}
+                    <div className="relative group rounded-3xl overflow-hidden shadow-2xl mb-4 bg-slate-200 aspect-video">
                         <img
-                            src={mainImageUrl}
-                            className="w-full h-full object-cover"
+                            src={currentImageUrl}
+                            className="w-full h-full object-cover transition-all duration-500"
                             alt={room.roomType.name}
                         />
+
+                        {/* Стрілки (показуються при наведенні) */}
+                        {room.roomType.images.length > 1 && (
+                            <>
+                                <button
+                                    onClick={prevImage}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all"
+                                >
+                                    <ChevronLeft size={24} className="text-slate-800" />
+                                </button>
+                                <button
+                                    onClick={nextImage}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all"
+                                >
+                                    <ChevronRight size={24} className="text-slate-800" />
+                                </button>
+
+                                {/* Індикатор кількості */}
+                                <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">
+                                    {activeImgIndex + 1} / {room.roomType.images.length}
+                                </div>
+                            </>
+                        )}
                     </div>
+
+                    {/* МІНІАТЮРИ ГАЛЕРЕЇ */}
+                    {room.roomType.images.length > 1 && (
+                        <div className="flex gap-3 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+                            {room.roomType.images.map((img, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => setActiveImgIndex(idx)}
+                                    className={`relative flex-shrink-0 w-24 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+                                        activeImgIndex === idx
+                                            ? 'border-primary scale-105 shadow-md'
+                                            : 'border-transparent opacity-60 hover:opacity-100'
+                                    }`}
+                                >
+                                    <img
+                                        src={img.url}
+                                        className="w-full h-full object-cover"
+                                        alt="thumbnail"
+                                    />
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     <h1 className="text-4xl font-black text-slate-900 mb-4">
                         {room.roomType.name}
