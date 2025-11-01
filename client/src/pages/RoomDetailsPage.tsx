@@ -549,7 +549,7 @@ export const RoomDetailsPage = () => {
                                 >
                                     {user
                                         ? bookingData.paymentMethod === 'CARD'
-                                            ? 'Оплатити та забронювати'
+                                            ? 'Забронювати та оплатити'
                                             : 'Забронювати'
                                         : 'Увійдіть для бронювання'}
                                 </button>

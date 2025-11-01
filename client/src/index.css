@@ -17,7 +17,13 @@ body {
 }
 
 /* Прибираємо стандартні іконки браузера */
-input[type='date']::-webkit-calendar-picker-indicator {
-    display: none;
+input::-webkit-calendar-picker-indicator,
+input::-webkit-inner-spin-button,
+input::-webkit-clear-button {
+    display: none !important;
     -webkit-appearance: none;
+}
+
+.react-datepicker-wrapper {
+    width: 100%;
 }
