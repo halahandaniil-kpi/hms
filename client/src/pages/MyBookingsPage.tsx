@@ -76,7 +76,7 @@ export const MyBookingsPage = () => {
         };
 
         const labels: Record<string, string> = {
-            PENDING: 'Очікує оплати',
+            PENDING: 'Очікує підтвердження',
             CONFIRMED: 'Підтверджено',
             CHECKED_IN: 'Ви проживаєте',
             CHECKED_OUT: 'Завершено',
@@ -86,6 +86,30 @@ export const MyBookingsPage = () => {
         return (
             <span
                 className={`px-3 py-1 rounded-full text-xs font-black uppercase border ${styles[status as keyof typeof styles]}`}
+            >
+                {labels[status] || status}
+            </span>
+        );
+    };
+
+    const getPaymentStatusBadge = (status: string) => {
+        const styles: Record<string, string> = {
+            PENDING: 'bg-yellow-50 text-yellow-600 border-yellow-100',
+            COMPLETED: 'bg-green-50 text-green-600 border-green-100',
+            REFUNDED: 'bg-purple-50 text-purple-600 border-purple-100',
+            FAILED: 'bg-red-50 text-red-600 border-red-100',
+        };
+
+        const labels: Record<string, string> = {
+            PENDING: 'Очікує',
+            COMPLETED: 'Оплачено',
+            REFUNDED: 'Повернено',
+            FAILED: 'Помилка',
+        };
+
+        return (
+            <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded border ${styles[status] || 'bg-gray-50'}`}
             >
                 {labels[status] || status}
             </span>
@@ -155,11 +179,15 @@ export const MyBookingsPage = () => {
                                 </div>
 
                                 <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                                    <div className="flex items-center gap-2">
-                                        <CreditCard size={18} className="text-slate-400" />
-                                        <span className="text-lg font-black text-primary">
-                                            {booking.totalPrice} ₴
-                                        </span>
+                                    <div className="flex items-center gap-3 pt-4 border-t border-slate-50">
+                                        <div className="flex items-center gap-2">
+                                            <CreditCard size={18} className="text-slate-400" />
+                                            <span className="text-lg font-black text-primary">
+                                                {booking.totalPrice} ₴
+                                            </span>
+                                        </div>
+                                        {booking.payment &&
+                                            getPaymentStatusBadge(booking.payment.status)}
                                     </div>
 
                                     {/* ЛОГІКА ВІДГУКУ */}

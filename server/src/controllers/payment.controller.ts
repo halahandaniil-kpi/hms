@@ -34,15 +34,20 @@ export const pay = async (req: AuthRequest, res: Response) => {
 
 export const confirmCash = async (req: AuthRequest, res: Response) => {
     try {
-        // Тільки адмін або ресепшн може підтверджувати готівку
-        if (req.user?.role === 'GUEST') {
-            return res.status(403).json({ message: 'Недостатньо прав' });
-        }
-
         const { paymentId } = req.params;
         const payment = await PaymentService.confirmCashPayment(Number(paymentId));
 
         res.json({ message: 'Оплату готівкою підтверджено', payment });
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+export const refund = async (req: AuthRequest, res: Response) => {
+    try {
+        const { paymentId } = req.params;
+        const payment = await PaymentService.refundPayment(Number(paymentId));
+        res.json(payment);
     } catch (error: any) {
         res.status(400).json({ message: error.message });
     }

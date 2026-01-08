@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
-import { LogOut, LogIn, Phone, Mail, Search, Filter, XCircle, ChevronDown } from 'lucide-react';
+import {
+    LogOut,
+    LogIn,
+    Phone,
+    Mail,
+    Search,
+    Filter,
+    XCircle,
+    ChevronDown,
+    CheckCircle,
+} from 'lucide-react';
 
 interface Booking {
     id: number;
@@ -43,7 +53,7 @@ export const AdminDashboardPage = () => {
         };
 
         const labels: Record<string, string> = {
-            PENDING: 'Очікується оплата',
+            PENDING: 'Очікується підтвердження',
             CONFIRMED: 'Підтверджено',
             CHECKED_IN: 'Проживає',
             CHECKED_OUT: 'Завершено',
@@ -53,6 +63,30 @@ export const AdminDashboardPage = () => {
         return (
             <span
                 className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${styles[status as keyof typeof styles]}`}
+            >
+                {labels[status] || status}
+            </span>
+        );
+    };
+
+    const getPaymentStatusBadge = (status: string) => {
+        const styles: Record<string, string> = {
+            PENDING: 'bg-yellow-50 text-yellow-600 border-yellow-100',
+            COMPLETED: 'bg-green-50 text-green-600 border-green-100',
+            REFUNDED: 'bg-purple-50 text-purple-600 border-purple-100',
+            FAILED: 'bg-red-50 text-red-600 border-red-100',
+        };
+
+        const labels: Record<string, string> = {
+            PENDING: 'Очікує',
+            COMPLETED: 'Оплачено',
+            REFUNDED: 'Повернено',
+            FAILED: 'Помилка',
+        };
+
+        return (
+            <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded border ${styles[status] || 'bg-gray-50'}`}
             >
                 {labels[status] || status}
             </span>
@@ -210,38 +244,57 @@ export const AdminDashboardPage = () => {
                                     <td className="p-6">
                                         {b.payment ? (
                                             <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span
-                                                        className={`w-2 h-2 rounded-full ${b.payment.status === 'COMPLETED' ? 'bg-green-500' : 'bg-yellow-500'}`}
-                                                    ></span>
-                                                    <span className="text-sm font-black text-slate-800">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-black">
                                                         {b.totalPrice} ₴
                                                     </span>
+                                                    {getPaymentStatusBadge(b.payment.status)}
                                                 </div>
                                                 {b.payment.status === 'PENDING' && (
                                                     <button
                                                         onClick={() =>
                                                             confirmPayment(b.payment!.id)
                                                         }
-                                                        className="text-[9px] w-fit bg-primary text-white px-2 py-0.5 rounded-md hover:bg-blue-700 font-bold uppercase transition-colors"
+                                                        className="text-[9px] bg-primary text-white px-2 py-1 rounded font-bold uppercase"
                                                     >
-                                                        Підтвердити $
+                                                        Підтвердити оплату
                                                     </button>
                                                 )}
                                             </div>
                                         ) : (
-                                            <span className="text-[10px] font-bold text-slate-300 uppercase">
-                                                Оплата відсутня
+                                            <span className="text-sm font-bold text-slate-300">
+                                                Очікує оплати
                                             </span>
                                         )}
                                     </td>
                                     <td className="p-6 text-right">
                                         <div className="flex justify-end gap-2">
+                                            {b.status === 'PENDING' && (
+                                                <button
+                                                    onClick={() => updateStatus(b.id, 'CONFIRMED')}
+                                                    className="p-2 text-green-600 hover:bg-green-50 rounded-xl transition-all"
+                                                    title="Підтвердити бронювання"
+                                                >
+                                                    <CheckCircle size={20} />
+                                                </button>
+                                            )}
                                             {b.status === 'CONFIRMED' && (
                                                 <button
-                                                    onClick={() => updateStatus(b.id, 'CHECKED_IN')}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                                                    title="Поселити"
+                                                    onClick={() => {
+                                                        if (b.payment?.status !== 'COMPLETED') {
+                                                            alert(
+                                                                'Заселення неможливе без підтвердженої оплати!',
+                                                            );
+                                                            return;
+                                                        }
+                                                        updateStatus(b.id, 'CHECKED_IN');
+                                                    }}
+                                                    className={`p-2 rounded-xl transition-all ${b.payment?.status === 'COMPLETED' ? 'text-blue-600 hover:bg-blue-50' : 'text-slate-300 cursor-not-allowed'}`}
+                                                    title={
+                                                        b.payment?.status === 'COMPLETED'
+                                                            ? 'Поселити'
+                                                            : 'Оплата не проведена'
+                                                    }
                                                 >
                                                     <LogIn size={20} />
                                                 </button>

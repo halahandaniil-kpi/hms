@@ -47,6 +47,7 @@ export const getAll = async (req: Request, res: Response) => {
             include: {
                 user: { select: { fullName: true, email: true, phone: true } },
                 room: { include: { roomType: true } },
+                payment: true,
             },
             orderBy: { createdAt: 'desc' },
         });

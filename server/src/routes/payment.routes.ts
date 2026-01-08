@@ -1,10 +1,16 @@
 import { Router } from 'express';
 import * as PaymentController from '../controllers/payment.controller.js';
-import { authenticate } from '../middlewares/auth.middleware.js';
+import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
 router.post('/pay', authenticate, PaymentController.pay);
-router.patch('/:paymentId/confirm', authenticate, PaymentController.confirmCash);
+router.patch(
+    '/:paymentId/confirm',
+    authenticate,
+    authorize(['ADMIN', 'RECEPTIONIST']),
+    PaymentController.confirmCash,
+);
+router.patch('/:paymentId/refund', authenticate, authorize(['ADMIN']), PaymentController.refund);
 
 export default router;
