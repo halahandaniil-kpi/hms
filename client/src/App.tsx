@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { RoomDetailsPage } from './pages/RoomDetailsPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -15,12 +16,20 @@ const Navbar = () => {
                     GRAND RESERVE
                 </Link>
                 <div className="flex gap-6 items-center font-bold text-sm uppercase tracking-widest">
-                    {user && (
+                    {user && user.role === 'GUEST' && (
                         <Link
                             to="/bookings/my"
                             className="text-slate-600 hover:text-primary transition-colors"
                         >
                             Мої бронювання
+                        </Link>
+                    )}
+                    {user && (user.role === 'ADMIN' || user.role === 'RECEPTIONIST') && (
+                        <Link
+                            to="/admin"
+                            className="text-primary font-black border-b-2 border-primary"
+                        >
+                            Панель управління
                         </Link>
                     )}
                     <Link to="/" className="text-slate-600 hover:text-primary transition-colors">
@@ -32,6 +41,9 @@ const Navbar = () => {
                             <span className="text-slate-900 lowercase font-medium">
                                 {user.email}
                             </span>
+                            {user && (user.role === 'ADMIN' || user.role === 'RECEPTIONIST') && (
+                                <span className="font-medium text-primary">{user.role}</span>
+                            )}
                             <button onClick={logout} className="text-red-500 hover:text-red-700">
                                 Вихід
                             </button>
@@ -62,6 +74,7 @@ function App() {
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/rooms/:id" element={<RoomDetailsPage />} />
                         <Route path="/bookings/my" element={<MyBookingsPage />} />
+                        <Route path="/admin" element={<AdminDashboardPage />} />
                     </Routes>
                 </div>
             </BrowserRouter>

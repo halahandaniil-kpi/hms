@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as BookingService from '../services/booking.service.js';
+import prisma from '../lib/prisma.js';
 
 export const create = async (req: any, res: Response) => {
     try {
@@ -37,5 +38,35 @@ export const getTakenDates = async (req: Request, res: Response) => {
         res.json(dates);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+export const getAll = async (req: Request, res: Response) => {
+    try {
+        const bookings = await prisma.booking.findMany({
+            include: {
+                user: { select: { fullName: true, email: true, phone: true } },
+                room: { include: { roomType: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        res.json(bookings);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const updateStatus = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const updated = await prisma.booking.update({
+            where: { id: Number(id) },
+            data: { status },
+        });
+        res.json(updated);
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
     }
 };
