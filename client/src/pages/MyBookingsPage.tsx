@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import axios from 'axios';
-import { Calendar, MapPin, CreditCard, Star, MessageSquare, XCircle } from 'lucide-react';
+import {
+    Calendar,
+    MapPin,
+    CreditCard,
+    Star,
+    MessageSquare,
+    XCircle,
+    Info,
+    CheckCircle,
+} from 'lucide-react';
 
 interface Booking {
     id: number;
@@ -160,9 +169,9 @@ export const MyBookingsPage = () => {
                     {bookings.map((booking) => (
                         <div
                             key={booking.id}
-                            className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col md:flex-row"
+                            className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col md:flex-row items-stretch"
                         >
-                            <div className="w-full md:w-64 h-48 bg-slate-200">
+                            <div className="w-full md:w-64 min-h-[12rem] md:h-auto bg-slate-200 flex-shrink-0 relative">
                                 <img
                                     src={
                                         booking.room.roomType.images.find((i) => i.isPrimary)
@@ -236,6 +245,25 @@ export const MyBookingsPage = () => {
                                         </button>
                                     )}
                                 </div>
+
+                                {/* ПОВІДОМЛЕННЯ ПРО ПОВЕРНЕННЯ КОШТІВ */}
+                                {booking.status === 'CANCELLED' &&
+                                    booking.payment?.status === 'COMPLETED' && (
+                                        <div className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl text-[11px] font-bold border border-purple-100 animate-pulse">
+                                            <Info size={14} className="flex-shrink-0" />
+                                            <span>
+                                                Ваше бронювання скасовано, але оплата була
+                                                підтверджена. Будь ласка, очікуйте на повернення
+                                                коштів адміністратором.
+                                            </span>
+                                        </div>
+                                    )}
+                                {booking.payment?.status === 'REFUNDED' && (
+                                    <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-xl text-[11px] font-bold border border-green-100">
+                                        <CheckCircle size={14} className="flex-shrink-0" />
+                                        <span>Кошти за це бронювання були успішно повернуті.</span>
+                                    </div>
+                                )}
 
                                 {/* ФОРМА ВІДГУКУ */}
                                 {reviewForm.id === booking.id && (
