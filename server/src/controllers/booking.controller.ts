@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as BookingService from '../services/booking.service.js';
 import prisma from '../lib/prisma.js';
+import { AuthRequest } from '../middlewares/auth.middleware.js';
 
 export const create = async (req: any, res: Response) => {
     try {
@@ -67,6 +68,18 @@ export const updateStatus = async (req: Request, res: Response) => {
             data: { status },
         });
         res.json(updated);
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+export const cancel = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user!.userId;
+
+        await BookingService.cancelBooking(Number(id), userId);
+        res.json({ message: 'Бронювання успішно скасовано' });
     } catch (error: any) {
         res.status(400).json({ message: error.message });
     }

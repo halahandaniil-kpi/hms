@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import axios from 'axios';
-import { Calendar, MapPin, CreditCard, Star, MessageSquare } from 'lucide-react';
+import { Calendar, MapPin, CreditCard, Star, MessageSquare, XCircle } from 'lucide-react';
 
 interface Booking {
     id: number;
@@ -62,6 +62,23 @@ export const MyBookingsPage = () => {
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
                 alert(err.response?.data?.message || 'Помилка відправки відгуку');
+            } else {
+                alert('Виникла непередбачувана помилка');
+            }
+        }
+    };
+
+    const handleCancel = async (bookingId: number) => {
+        if (!window.confirm('Ви впевнені, що хочете скасувати це бронювання?')) return;
+
+        try {
+            await api.patch(`/bookings/${bookingId}/cancel`);
+            fetchBookings();
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                alert(err.response?.data?.message || 'Помилка скасування');
+            } else {
+                alert('Виникла непередбачувана помилка');
             }
         }
     };
@@ -207,6 +224,16 @@ export const MyBookingsPage = () => {
                                             <Star size={16} fill="currentColor" />{' '}
                                             {booking.review.rating}/5
                                         </div>
+                                    )}
+
+                                    {/* СКАСУВАННЯ БРОНЮВАННЯ */}
+                                    {['PENDING', 'CONFIRMED'].includes(booking.status) && (
+                                        <button
+                                            onClick={() => handleCancel(booking.id)}
+                                            className="flex items-center gap-2 border border-red-200 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-50 transition-all"
+                                        >
+                                            <XCircle size={16} /> Скасувати
+                                        </button>
                                     )}
                                 </div>
 

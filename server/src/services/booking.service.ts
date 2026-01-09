@@ -114,3 +114,25 @@ export const getTakenDates = async (roomId: number) => {
 
     return { bookings, maintenance };
 };
+
+export const cancelBooking = async (bookingId: number, userId: number) => {
+    const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+    });
+
+    if (!booking) throw new Error('Бронювання не знайдено');
+
+    if (booking.userId !== userId) {
+        throw new Error('Ви не можете скасувати чуже бронювання');
+    }
+
+    // Перевірка статусу: не можна скасувати, якщо вже проживаєш або виїхав
+    if (!['PENDING', 'CONFIRMED'].includes(booking.status)) {
+        throw new Error('Неможливо скасувати бронювання на даному етапі');
+    }
+
+    return await prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: 'CANCELLED' },
+    });
+};
