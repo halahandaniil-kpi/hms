@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import axios from 'axios';
 import {
     LogOut,
     LogIn,
@@ -24,6 +26,8 @@ interface Booking {
 }
 
 export const AdminDashboardPage = () => {
+    const { user } = useAuth();
+
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -42,6 +46,20 @@ export const AdminDashboardPage = () => {
     useEffect(() => {
         fetchAllBookings();
     }, []);
+
+    const handleRefund = async (paymentId: number) => {
+        if (!window.confirm('Ви впевнені, що хочете оформити повернення коштів?')) return;
+
+        try {
+            await api.patch(`/payments/${paymentId}/refund`);
+            fetchAllBookings();
+            alert('Повернення коштів успішно оформлено');
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                alert(err.response?.data?.message || 'Помилка при поверненні');
+            }
+        }
+    };
 
     const getStatusBadge = (status: string) => {
         const styles = {
@@ -260,6 +278,17 @@ export const AdminDashboardPage = () => {
                                                         Підтвердити оплату
                                                     </button>
                                                 )}
+                                                {user?.role === 'ADMIN' &&
+                                                    b.payment.status === 'COMPLETED' && (
+                                                        <button
+                                                            onClick={() =>
+                                                                handleRefund(b.payment!.id)
+                                                            }
+                                                            className="text-[9px] border border-purple-200 text-purple-600 px-2 py-1 rounded hover:bg-purple-50 font-bold uppercase"
+                                                        >
+                                                            Оформити повернення
+                                                        </button>
+                                                    )}
                                             </div>
                                         ) : (
                                             <span className="text-sm font-bold text-slate-300">
