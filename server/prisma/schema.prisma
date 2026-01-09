@@ -59,11 +59,18 @@ model RoomType {
     description String? @db.Text
     basePrice   Decimal @db.Decimal(10, 2)
     capacity    Int
-    bedType     String  @default("Стандартне ліжко")
+    bedTypeId   Int
+    bedType     BedType @relation(fields: [bedTypeId], references: [id])
 
     rooms     Room[]
     images    RoomImage[]
     amenities RoomAmenity[]
+}
+
+model BedType {
+    id        Int        @id @default(autoincrement())
+    name      String     @unique
+    roomTypes RoomType[]
 }
 
 model Room {

@@ -11,7 +11,9 @@ interface Room {
         basePrice: string;
         description: string;
         capacity: number;
-        bedType: string;
+        bedType: {
+            name: string;
+        };
         images: {
             url: string;
             isPrimary: boolean;
@@ -112,7 +114,7 @@ export const RoomsPage = () => {
                                     </span>
                                     <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-md">
                                         <BedDouble size={16} className="text-primary" />{' '}
-                                        {room.roomType.bedType}
+                                        {room.roomType.bedType.name}
                                     </span>
                                 </div>
 

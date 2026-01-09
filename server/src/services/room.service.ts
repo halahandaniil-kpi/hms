@@ -6,6 +6,7 @@ export const getAllRooms = async () => {
             roomType: {
                 include: {
                     images: true,
+                    bedType: true,
                     amenities: {
                         include: { amenity: true },
                     },
@@ -50,6 +51,7 @@ export const getRoomById = async (id: number) => {
             roomType: {
                 include: {
                     images: true,
+                    bedType: true,
                     amenities: {
                         include: { amenity: true },
                     },
