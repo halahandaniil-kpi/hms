@@ -92,3 +92,69 @@ export const getRoomById = async (id: number) => {
         reviewCount: reviews.length,
     };
 };
+
+// --- BedTypes ---
+export const createBedType = (name: string) => prisma.bedType.create({ data: { name } });
+export const getAllBedTypes = () => prisma.bedType.findMany();
+export const deleteBedType = (id: number) => prisma.bedType.delete({ where: { id } });
+
+// --- Amenities ---
+export const createAmenity = (name: string) => prisma.amenity.create({ data: { name } });
+export const getAllAmenities = () => prisma.amenity.findMany();
+export const deleteAmenity = (id: number) => prisma.amenity.delete({ where: { id } });
+
+// --- RoomTypes ---
+export const getAllRoomTypes = async () => {
+    return await prisma.roomType.findMany({
+        include: {
+            amenities: { include: { amenity: true } },
+            bedType: true,
+        },
+    });
+};
+
+export const createRoomType = (data: any) => {
+    const { amenityIds, ...rest } = data;
+    return prisma.roomType.create({
+        data: {
+            ...rest,
+            amenities: {
+                create: amenityIds.map((id: number) => ({ amenityId: id })),
+            },
+        },
+    });
+};
+
+export const updateRoomType = (id: number, data: any) => {
+    const { amenityIds, ...rest } = data;
+    return prisma.roomType.update({
+        where: { id },
+        data: {
+            ...rest,
+            amenities: {
+                deleteMany: {}, // Скидаємо старі зручності
+                create: amenityIds.map((id: number) => ({ amenityId: id })),
+            },
+        },
+    });
+};
+
+export const deleteRoomType = async (id: number) => {
+    // Перевіряємо, чи є кімнати в цій категорії
+    const roomsCount = await prisma.room.count({ where: { roomTypeId: id } });
+
+    if (roomsCount > 0) {
+        throw new Error(
+            `Неможливо видалити: до цієї категорії прив'язано ${roomsCount} номерів. Спочатку змініть категорію для цих номерів або видаліть їх.`,
+        );
+    }
+
+    // Якщо кімнат немає, видаляємо
+    return await prisma.roomType.delete({
+        where: { id },
+    });
+};
+
+// --- Rooms ---
+export const createRoom = (data: any) => prisma.room.create({ data });
+export const deleteRoom = (id: number) => prisma.room.delete({ where: { id } });

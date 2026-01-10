@@ -6,6 +6,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { RoomDetailsPage } from './pages/RoomDetailsPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { AdminInventoryPage } from './pages/AdminInventoryPage';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -25,12 +26,22 @@ const Navbar = () => {
                         </Link>
                     )}
                     {user && (user.role === 'ADMIN' || user.role === 'RECEPTIONIST') && (
-                        <Link
-                            to="/admin"
-                            className="text-primary font-black border-b-2 border-primary"
-                        >
-                            Панель управління
-                        </Link>
+                        <div className="flex gap-4">
+                            <Link
+                                to="/admin"
+                                className="text-primary hover:text-blue-700 transition-colors border-b-2 border-primary"
+                            >
+                                Бронювання
+                            </Link>
+                            {user.role === 'ADMIN' && (
+                                <Link
+                                    to="/admin/inventory"
+                                    className="text-slate-600 hover:text-primary transition-colors"
+                                >
+                                    Фонд
+                                </Link>
+                            )}
+                        </div>
                     )}
                     <Link to="/" className="text-slate-600 hover:text-primary transition-colors">
                         Номери
@@ -75,6 +86,7 @@ function App() {
                         <Route path="/rooms/:id" element={<RoomDetailsPage />} />
                         <Route path="/bookings/my" element={<MyBookingsPage />} />
                         <Route path="/admin" element={<AdminDashboardPage />} />
+                        <Route path="/admin/inventory" element={<AdminInventoryPage />} />
                     </Routes>
                 </div>
             </BrowserRouter>

@@ -97,8 +97,8 @@ model RoomAmenity {
     roomTypeId Int
     amenityId  Int
 
-    roomType RoomType @relation(fields: [roomTypeId], references: [id])
-    amenity  Amenity  @relation(fields: [amenityId], references: [id])
+    roomType RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+    amenity  Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
 
     @@id([roomTypeId, amenityId])
 }
@@ -166,7 +166,7 @@ model RoomImage {
     createdAt DateTime @default(now())
 
     roomTypeId Int
-    roomType   RoomType @relation(fields: [roomTypeId], references: [id])
+    roomType   RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
 }
 
 model RefreshToken {

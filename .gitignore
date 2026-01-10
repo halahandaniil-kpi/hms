@@ -8,3 +8,5 @@ server/dist/
 
 .env
 server/.env
+
+prisma/migrations/
