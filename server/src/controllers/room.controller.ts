@@ -1,6 +1,28 @@
 import { Request, Response } from 'express';
 import * as RoomService from '../services/room.service.js';
 
+export const getServerFiles = async (req: Request, res: Response) => {
+    try {
+        const files = RoomService.getServerFiles();
+        res.json(files);
+    } catch (error) {
+        res.status(500).json({ message: 'Помилка отримання файлів із сервера' });
+    }
+};
+
+export const uploadImage = async (req: Request, res: Response) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Файл не завантажено' });
+        }
+        // Повертаємо шлях до завантаженого файлу
+        const filePath = `/uploads/${req.file.filename}`;
+        res.status(201).json({ url: filePath });
+    } catch (error) {
+        res.status(500).json({ message: 'Помилка при завантаженні файлу' });
+    }
+};
+
 const parseId = (id: string | string[] | undefined): number => {
     const val = Array.isArray(id) ? id[0] : id;
     return parseInt(val as string, 10);
@@ -144,10 +166,22 @@ export const createRoomType = async (req: Request, res: Response) => {
 export const updateRoomType = async (req: Request, res: Response) => {
     try {
         const id = parseId(req.params.id);
-        const updated = await RoomService.updateRoomType(id, req.body);
+        const { name, description, basePrice, capacity, bedTypeId, amenityIds, images } = req.body;
+
+        // Використовуємо спеціальний метод сервісу для повного оновлення (з картинками та зручностями)
+        const updated = await RoomService.updateRoomTypeFull(id, {
+            name,
+            description,
+            basePrice: Number(basePrice),
+            capacity: Number(capacity),
+            bedTypeId: Number(bedTypeId),
+            amenityIds: amenityIds || [],
+            images: images || [], // Тільки тут ми оновлюємо картинки
+        });
+
         res.json(updated);
-    } catch (error) {
-        res.status(400).json({ message: 'Помилка оновлення типу номера' });
+    } catch (error: any) {
+        res.status(400).json({ message: error.message || 'Помилка оновлення категорії' });
     }
 };
 

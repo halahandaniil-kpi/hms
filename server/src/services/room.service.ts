@@ -1,4 +1,6 @@
 import prisma from '../lib/prisma.js';
+import fs from 'fs';
+import path from 'path';
 
 export const getAllRooms = async () => {
     const rooms = await prisma.room.findMany({
@@ -109,6 +111,7 @@ export const getAllRoomTypes = async () => {
         include: {
             amenities: { include: { amenity: true } },
             bedType: true,
+            images: true,
         },
     });
 };
@@ -125,17 +128,29 @@ export const createRoomType = (data: any) => {
     });
 };
 
-export const updateRoomType = (id: number, data: any) => {
-    const { amenityIds, ...rest } = data;
-    return prisma.roomType.update({
-        where: { id },
-        data: {
-            ...rest,
-            amenities: {
-                deleteMany: {}, // Скидаємо старі зручності
-                create: amenityIds.map((id: number) => ({ amenityId: id })),
+export const updateRoomTypeFull = async (id: number, data: any) => {
+    const { amenityIds, images, ...rest } = data;
+
+    return await prisma.$transaction(async (tx) => {
+        // Оновлюємо основні дані
+        const updated = await tx.roomType.update({
+            where: { id },
+            data: {
+                ...rest,
+                amenities: {
+                    deleteMany: {}, // Скидаємо старі зручності
+                    create: amenityIds.map((aId: number) => ({ amenityId: aId })),
+                },
+                images: {
+                    deleteMany: {}, // Видаляємо старі посилання
+                    create: images.map((img: any) => ({
+                        url: img.url,
+                        isPrimary: img.isPrimary,
+                    })),
+                },
             },
-        },
+        });
+        return updated;
     });
 };
 
@@ -158,3 +173,9 @@ export const deleteRoomType = async (id: number) => {
 // --- Rooms ---
 export const createRoom = (data: any) => prisma.room.create({ data });
 export const deleteRoom = (id: number) => prisma.room.delete({ where: { id } });
+
+export const getServerFiles = () => {
+    const dirPath = path.resolve('public/uploads');
+    if (!fs.existsSync(dirPath)) return [];
+    return fs.readdirSync(dirPath).map((file) => `/uploads/${file}`);
+};

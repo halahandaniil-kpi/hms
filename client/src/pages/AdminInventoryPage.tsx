@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import axios from 'axios';
-import { Plus, Trash2, Bed, Home, CheckSquare, Layers, X } from 'lucide-react';
+import { Plus, Trash2, Bed, Home, CheckSquare, Layers, X, Edit3, Star } from 'lucide-react';
 
 interface Amenity {
     id: number;
@@ -17,8 +17,20 @@ interface RoomType {
     description: string;
     basePrice: string;
     capacity: number;
-    bedType: { name: string };
-    amenities: { amenity: { name: string } }[];
+    bedType: {
+        id: number;
+        name: string;
+    };
+    images: {
+        url: string;
+        isPrimary: boolean;
+    }[];
+    amenities: {
+        amenity: {
+            id: number;
+            name: string;
+        };
+    }[];
 }
 interface Room {
     id: number;
@@ -48,6 +60,11 @@ export const AdminInventoryPage = () => {
         bedTypeId: '',
         amenityIds: [] as number[],
     });
+
+    const [editingTypeId, setEditingTypeId] = useState<number | null>(null);
+    const [serverFiles, setServerFiles] = useState<string[]>([]);
+    const [showFilePicker, setShowFilePicker] = useState(false);
+    const [tempImages, setTempImages] = useState<{ url: string; isPrimary: boolean }[]>([]);
 
     const fetchData = async () => {
         try {
@@ -135,21 +152,62 @@ export const AdminInventoryPage = () => {
 
     const handleSaveType = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // При редагуванні додаємо масив images, при створенні - ні
+        const payload = editingTypeId ? { ...typeForm, images: tempImages } : typeForm;
+
         try {
-            await api.post('/rooms/types', typeForm);
+            if (editingTypeId) {
+                await api.patch(`/rooms/types/${editingTypeId}`, payload);
+            } else {
+                await api.post('/rooms/types', payload);
+            }
+
             setIsAddingType(false);
-            setTypeForm({
-                name: '',
-                description: '',
-                basePrice: '',
-                capacity: '',
-                bedTypeId: '',
-                amenityIds: [],
-            });
+            resetForm();
             fetchData();
         } catch (err: unknown) {
             if (axios.isAxiosError(err))
                 alert(err.response?.data?.message || 'Помилка при збереженні категорії');
+        }
+    };
+
+    const startEditType = (type: RoomType) => {
+        setEditingTypeId(type.id);
+        setIsAddingType(true);
+        setTypeForm({
+            name: type.name,
+            description: type.description || '',
+            basePrice: type.basePrice.toString(),
+            capacity: type.capacity.toString(),
+            bedTypeId: type.bedType?.id.toString(),
+            amenityIds: type.amenities?.map((a) => a.amenity.id) || [],
+        });
+        setTempImages(type.images || []);
+        fetchServerFiles();
+    };
+
+    const resetForm = () => {
+        setEditingTypeId(null);
+        setTypeForm({
+            name: '',
+            description: '',
+            basePrice: '',
+            capacity: '',
+            bedTypeId: '',
+            amenityIds: [],
+        });
+        setTempImages([]);
+    };
+
+    // Отримання списку файлів з public/uploads
+    const fetchServerFiles = async () => {
+        try {
+            const res = await api.get('/rooms/meta/server-files');
+            setServerFiles(res.data);
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err))
+                alert(err.response?.data?.message || 'Не вдалося завантажити файли');
         }
     };
 
@@ -380,7 +438,15 @@ export const AdminInventoryPage = () => {
                             <Layers size={20} /> Категорії номерів
                         </h2>
                         <button
-                            onClick={() => setIsAddingType(!isAddingType)}
+                            onClick={() => {
+                                if (isAddingType) {
+                                    setIsAddingType(false);
+                                    resetForm();
+                                } else {
+                                    resetForm(); // Очищуємо перед відкриттям нової
+                                    setIsAddingType(true);
+                                }
+                            }}
                             className="bg-primary text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center gap-2"
                         >
                             {isAddingType ? <X size={18} /> : <Plus size={18} />}{' '}
@@ -391,96 +457,191 @@ export const AdminInventoryPage = () => {
                     {isAddingType && (
                         <form
                             onSubmit={handleSaveType}
-                            className="bg-white p-8 rounded-3xl shadow-xl border border-blue-100 mb-10 grid grid-cols-1 md:grid-cols-2 gap-6"
+                            className="bg-white p-8 rounded-3xl shadow-xl border border-blue-100 mb-10"
                         >
-                            <div className="space-y-4">
-                                <input
-                                    type="text"
-                                    placeholder="Назва категорії (напр. Deluxe Suite)"
-                                    required
-                                    className="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 ring-primary font-bold"
-                                    value={typeForm.name}
-                                    onChange={(e) =>
-                                        setTypeForm({ ...typeForm, name: e.target.value })
-                                    }
-                                />
-
-                                <textarea
-                                    placeholder="Опис номера..."
-                                    className="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 ring-primary h-24 resize-none"
-                                    value={typeForm.description}
-                                    onChange={(e) =>
-                                        setTypeForm({ ...typeForm, description: e.target.value })
-                                    }
-                                />
-
-                                <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Ліва колонка: Текстові дані */}
+                                <div className="space-y-4">
+                                    <label className="block text-xs font-black uppercase text-slate-400 ml-1 tracking-widest">
+                                        Основна інформація
+                                    </label>
                                     <input
-                                        type="number"
-                                        placeholder="Ціна за ніч"
+                                        type="text"
+                                        placeholder="Назва категорії"
                                         required
-                                        className="p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 ring-primary"
-                                        value={typeForm.basePrice}
+                                        className="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 ring-primary font-bold"
+                                        value={typeForm.name}
                                         onChange={(e) =>
-                                            setTypeForm({ ...typeForm, basePrice: e.target.value })
+                                            setTypeForm({ ...typeForm, name: e.target.value })
                                         }
                                     />
-                                    <input
-                                        type="number"
-                                        placeholder="Місткість (осіб)"
-                                        required
-                                        className="p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 ring-primary"
-                                        value={typeForm.capacity}
+
+                                    <textarea
+                                        placeholder="Опис номера..."
+                                        className="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 ring-primary h-24 resize-none text-sm"
+                                        value={typeForm.description}
                                         onChange={(e) =>
-                                            setTypeForm({ ...typeForm, capacity: e.target.value })
+                                            setTypeForm({
+                                                ...typeForm,
+                                                description: e.target.value,
+                                            })
                                         }
                                     />
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input
+                                            type="number"
+                                            placeholder="Ціна за ніч"
+                                            required
+                                            className="p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 ring-primary font-bold"
+                                            value={typeForm.basePrice}
+                                            onChange={(e) =>
+                                                setTypeForm({
+                                                    ...typeForm,
+                                                    basePrice: e.target.value,
+                                                })
+                                            }
+                                        />
+                                        <input
+                                            type="number"
+                                            placeholder="Осіб"
+                                            required
+                                            className="p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 ring-primary font-bold"
+                                            value={typeForm.capacity}
+                                            onChange={(e) =>
+                                                setTypeForm({
+                                                    ...typeForm,
+                                                    capacity: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+
+                                    <select
+                                        required
+                                        className="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 ring-primary font-bold"
+                                        value={typeForm.bedTypeId}
+                                        onChange={(e) =>
+                                            setTypeForm({ ...typeForm, bedTypeId: e.target.value })
+                                        }
+                                    >
+                                        <option value="">Тип ліжка...</option>
+                                        {bedTypes.map((b) => (
+                                            <option key={b.id} value={b.id}>
+                                                {b.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
 
-                                <select
-                                    required
-                                    className="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 ring-primary font-bold"
-                                    value={typeForm.bedTypeId}
-                                    onChange={(e) =>
-                                        setTypeForm({ ...typeForm, bedTypeId: e.target.value })
-                                    }
-                                >
-                                    <option value="">Оберіть тип ліжка</option>
-                                    {bedTypes.map((b) => (
-                                        <option key={b.id} value={b.id}>
-                                            {b.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                {/* Права колонка: Зручності */}
+                                <div className="flex flex-col">
+                                    <label className="block text-xs font-black uppercase text-slate-400 mb-3 tracking-widest ml-1">
+                                        Зручності
+                                    </label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[150px] overflow-y-auto p-4 bg-slate-50 rounded-2xl border border-slate-100 flex-grow">
+                                        {amenities.map((a) => (
+                                            <label
+                                                key={a.id}
+                                                className="flex items-center gap-3 p-2 hover:bg-white rounded-xl cursor-pointer transition-all group"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-5 h-5 rounded border-slate-300 text-primary accent-primary"
+                                                    checked={typeForm.amenityIds.includes(a.id)}
+                                                    onChange={() => handleAmenityChange(a.id)}
+                                                />
+                                                <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900">
+                                                    {a.name}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* СЕКЦІЯ ФОТО */}
+                                {editingTypeId !== null && (
+                                    <div className="col-span-full border-t border-slate-100 pt-6 mt-4">
+                                        <label className="block text-xs font-black uppercase text-slate-400 mb-4 tracking-widest">
+                                            Галерея зображень
+                                        </label>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                            {tempImages?.map((img, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="relative group rounded-xl overflow-hidden aspect-video border-2 border-slate-200 bg-slate-100"
+                                                >
+                                                    <img
+                                                        src={
+                                                            img.url.startsWith('http')
+                                                                ? img.url
+                                                                : `http://localhost:5000${img.url}`
+                                                        }
+                                                        className="w-full h-full object-cover"
+                                                        alt="room"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).src =
+                                                                'https://via.placeholder.com/300x200?text=Error';
+                                                        }}
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setTempImages(
+                                                                    tempImages.map((item, i) => ({
+                                                                        ...item,
+                                                                        isPrimary: i === idx,
+                                                                    })),
+                                                                )
+                                                            }
+                                                            className={`p-1.5 rounded-lg ${img.isPrimary ? 'bg-yellow-400 text-white' : 'bg-white text-slate-600'}`}
+                                                        >
+                                                            <Star
+                                                                size={14}
+                                                                fill={
+                                                                    img.isPrimary ? 'white' : 'none'
+                                                                }
+                                                            />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setTempImages(
+                                                                    tempImages.filter(
+                                                                        (_, i) => i !== idx,
+                                                                    ),
+                                                                )
+                                                            }
+                                                            className="p-1.5 bg-red-500 text-white rounded-lg"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowFilePicker(true)}
+                                                className="border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:border-primary hover:text-primary transition-all aspect-video"
+                                            >
+                                                <Plus size={24} />
+                                                <span className="text-[10px] font-bold uppercase mt-1">
+                                                    Додати фото
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-black uppercase text-slate-400 mb-3 tracking-widest">
-                                    Зручності категорії
-                                </label>
-                                <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto p-2 bg-slate-50 rounded-2xl">
-                                    {amenities.map((a) => (
-                                        <label
-                                            key={a.id}
-                                            className="flex items-center gap-2 p-2 hover:bg-white rounded-lg cursor-pointer transition-all"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={typeForm.amenityIds.includes(a.id)}
-                                                onChange={() => handleAmenityChange(a.id)}
-                                                className="w-4 h-4 accent-primary"
-                                            />
-                                            <span className="text-sm font-medium text-slate-600">
-                                                {a.name}
-                                            </span>
-                                        </label>
-                                    ))}
-                                </div>
+                            {/* НИЖНЯ ПАНЕЛЬ ДІЙ */}
+                            <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
                                 <button
                                     type="submit"
-                                    className="w-full mt-6 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg"
+                                    className="bg-slate-900 text-white px-10 py-3 rounded-xl font-black uppercase tracking-wider hover:bg-black transition-all shadow-lg active:scale-95"
                                 >
-                                    Створити категорію
+                                    {editingTypeId ? 'Зберегти зміни' : 'Створити категорію'}
                                 </button>
                             </div>
                         </form>
@@ -502,12 +663,20 @@ export const AdminInventoryPage = () => {
                                             {type.basePrice} ₴ / ніч
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => handleDelete('/rooms/types', type.id)}
-                                        className="text-slate-300 hover:text-red-500 transition-colors"
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => startEditType(type)}
+                                            className="p-2 text-slate-400 hover:text-primary transition-colors"
+                                        >
+                                            <Edit3 size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete('/rooms/types', type.id)}
+                                            className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2 mb-4">
@@ -536,6 +705,92 @@ export const AdminInventoryPage = () => {
                         ))}
                     </div>
                 </section>
+            )}
+
+            {showFilePicker && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl max-w-2xl w-full p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-black text-slate-900">
+                                Менеджер зображень
+                            </h3>
+                            <button
+                                onClick={() => setShowFilePicker(false)}
+                                className="p-2 hover:bg-slate-100 rounded-full"
+                            >
+                                <X />
+                            </button>
+                        </div>
+
+                        {/* Ввід URL */}
+                        <div className="mb-8 p-4 bg-slate-50 rounded-2xl">
+                            <label className="text-xs font-black uppercase text-slate-400 block mb-2 ml-1">
+                                Додати через посилання (URL)
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    id="externalUrl"
+                                    type="text"
+                                    placeholder="https://images.unsplash.com/..."
+                                    className="flex-grow p-3 rounded-xl border-none outline-none focus:ring-2 ring-primary text-sm"
+                                />
+                                <button
+                                    onClick={() => {
+                                        const input = document.getElementById(
+                                            'externalUrl',
+                                        ) as HTMLInputElement;
+                                        if (input.value) {
+                                            setTempImages([
+                                                ...tempImages,
+                                                {
+                                                    url: input.value,
+                                                    isPrimary: tempImages.length === 0,
+                                                },
+                                            ]);
+                                            input.value = '';
+                                            setShowFilePicker(false);
+                                        }
+                                    }}
+                                    className="bg-slate-900 text-white px-6 rounded-xl font-bold"
+                                >
+                                    Додати
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Вибір завантажених */}
+                        <label className="text-xs font-black uppercase text-slate-400 block mb-3 ml-1">
+                            Або оберіть із завантажених на сервер
+                        </label>
+                        <div className="grid grid-cols-3 gap-3 overflow-y-auto max-h-[300px] pr-2">
+                            {serverFiles.map((file) => (
+                                <div
+                                    key={file}
+                                    onClick={() => {
+                                        setTempImages([
+                                            ...tempImages,
+                                            { url: file, isPrimary: tempImages.length === 0 },
+                                        ]);
+                                        setShowFilePicker(false);
+                                    }}
+                                    className="group relative aspect-video rounded-xl overflow-hidden cursor-pointer hover:ring-4 ring-primary transition-all"
+                                >
+                                    <img
+                                        src={`http://localhost:5000${file}`}
+                                        className="w-full h-full object-cover"
+                                        alt="server asset"
+                                    />
+                                    <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                            ))}
+                            {serverFiles.length === 0 && (
+                                <p className="col-span-full text-center py-10 text-slate-400 italic">
+                                    На сервері ще немає завантажених фото
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
         </main>
     );

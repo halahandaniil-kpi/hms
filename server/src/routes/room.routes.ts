@@ -1,6 +1,17 @@
 import { Router } from 'express';
 import * as RoomController from '../controllers/room.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import multer from 'multer';
+import path from 'path';
+
+// Налаштування збереження файлів
+const storage = multer.diskStorage({
+    destination: 'public/uploads/',
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+    },
+});
+const upload = multer({ storage });
 
 const router = Router();
 
@@ -12,6 +23,16 @@ router.get('/types/all', RoomController.getAllRoomTypes);
 router.get('/:id', RoomController.getRoom);
 
 // --- АДМІН-МАРШРУТИ ---
+
+// Роути для роботи з файлами
+router.get('/meta/server-files', authenticate, authorize(['ADMIN']), RoomController.getServerFiles);
+router.post(
+    '/upload',
+    authenticate,
+    authorize(['ADMIN']),
+    upload.single('image'),
+    RoomController.uploadImage,
+);
 
 // Управління фізичними номерами (Room)
 router.post('/', authenticate, authorize(['ADMIN']), RoomController.createRoom);
