@@ -50,7 +50,8 @@ export const AdminInventoryPage = () => {
 
     const [showForm, setShowForm] = useState(false);
     const [newRoom, setNewRoom] = useState({ roomNumber: '', floor: '', roomTypeId: '' });
-    const [newMeta, setNewMeta] = useState('');
+    const [newAmenityName, setNewAmenityName] = useState('');
+    const [newBedTypeName, setNewBedTypeName] = useState('');
     const [isAddingType, setIsAddingType] = useState(false);
     const [typeForm, setTypeForm] = useState({
         name: '',
@@ -118,11 +119,16 @@ export const AdminInventoryPage = () => {
     };
 
     const handleAddMeta = async (type: 'amenity' | 'bed-type') => {
-        if (!newMeta) return;
+        const value = type === 'amenity' ? newAmenityName : newBedTypeName;
+        if (!value) return;
         try {
             const endpoint = type === 'amenity' ? '/rooms/meta/amenities' : '/rooms/meta/bed-types';
-            await api.post(endpoint, { name: newMeta });
-            setNewMeta('');
+            await api.post(endpoint, { name: value });
+            if (type === 'amenity') {
+                setNewAmenityName('');
+            } else {
+                setNewBedTypeName('');
+            }
             fetchData();
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
@@ -397,8 +403,8 @@ export const AdminInventoryPage = () => {
                                 type="text"
                                 placeholder="Назва зручності..."
                                 className="flex-grow p-3 bg-slate-50 rounded-xl outline-none border border-transparent focus:border-primary"
-                                value={newMeta}
-                                onChange={(e) => setNewMeta(e.target.value)}
+                                value={newAmenityName}
+                                onChange={(e) => setNewAmenityName(e.target.value)}
                             />
                             <button
                                 onClick={() => handleAddMeta('amenity')}
@@ -437,8 +443,8 @@ export const AdminInventoryPage = () => {
                                 type="text"
                                 placeholder="Напр. King Size..."
                                 className="flex-grow p-3 bg-slate-50 rounded-xl outline-none border border-transparent focus:border-primary"
-                                value={newMeta}
-                                onChange={(e) => setNewMeta(e.target.value)}
+                                value={newBedTypeName}
+                                onChange={(e) => setNewBedTypeName(e.target.value)}
                             />
                             <button
                                 onClick={() => handleAddMeta('bed-type')}
