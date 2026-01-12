@@ -778,13 +778,22 @@ export const AdminInventoryPage = () => {
                                         const input = document.getElementById(
                                             'externalUrl',
                                         ) as HTMLInputElement;
-                                        if (input.value) {
+                                        const newUrl = input.value.trim();
+
+                                        if (newUrl) {
+                                            const isDuplicate = tempImages.some(
+                                                (img) => img.url === newUrl,
+                                            );
+                                            if (isDuplicate) {
+                                                alert(
+                                                    'Це фото вже додане до галереї цієї категорії!',
+                                                );
+                                                return;
+                                            }
+
                                             setTempImages([
                                                 ...tempImages,
-                                                {
-                                                    url: input.value,
-                                                    isPrimary: tempImages.length === 0,
-                                                },
+                                                { url: newUrl, isPrimary: tempImages.length === 0 },
                                             ]);
                                             input.value = '';
                                             setShowFilePicker(false);
@@ -829,6 +838,13 @@ export const AdminInventoryPage = () => {
                                 <div
                                     key={file}
                                     onClick={() => {
+                                        const isDuplicate = tempImages.some(
+                                            (img) => img.url === file,
+                                        );
+                                        if (isDuplicate) {
+                                            alert('Це завантажене фото вже є у списку вибраних!');
+                                            return;
+                                        }
                                         setTempImages([
                                             ...tempImages,
                                             { url: file, isPrimary: tempImages.length === 0 },
