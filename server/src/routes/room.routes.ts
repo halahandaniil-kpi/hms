@@ -33,6 +33,12 @@ router.post(
     upload.single('image'),
     RoomController.uploadImage,
 );
+router.delete(
+    '/meta/server-files/:filename',
+    authenticate,
+    authorize(['ADMIN']),
+    RoomController.deleteServerFile,
+);
 
 // Управління фізичними номерами (Room)
 router.post('/', authenticate, authorize(['ADMIN']), RoomController.createRoom);

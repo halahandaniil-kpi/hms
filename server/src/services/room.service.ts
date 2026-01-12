@@ -179,3 +179,20 @@ export const getServerFiles = () => {
     if (!fs.existsSync(dirPath)) return [];
     return fs.readdirSync(dirPath).map((file) => `/uploads/${file}`);
 };
+
+export const deleteServerFile = async (filename: string) => {
+    // Використовуємо path.basename, щоб ніхто не міг видалити системні файли за межами папки
+    const safeFilename = path.basename(filename);
+    const filePath = path.resolve('public/uploads', safeFilename);
+    const fileUrl = `/uploads/${safeFilename}`;
+
+    await prisma.roomImage.deleteMany({
+        where: { url: fileUrl },
+    });
+
+    if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        return true;
+    }
+    throw new Error('Файл не знайдено на сервері');
+};

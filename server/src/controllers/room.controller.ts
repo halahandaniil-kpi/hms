@@ -194,3 +194,16 @@ export const deleteRoomType = async (req: Request, res: Response) => {
         res.status(400).json({ message: error.message || 'Помилка видалення' });
     }
 };
+
+export const deleteServerFile = async (req: Request, res: Response) => {
+    try {
+        const { filename } = req.params;
+        if (!filename || typeof filename !== 'string') {
+            return res.status(400).json({ message: 'Некоректне ім’я файлу' });
+        }
+        await RoomService.deleteServerFile(filename);
+        res.json({ message: 'Файл видалено з сервера' });
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};

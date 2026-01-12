@@ -211,6 +211,45 @@ export const AdminInventoryPage = () => {
         }
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            // Відправляємо файл на сервер
+            await api.post('/rooms/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+
+            fetchServerFiles();
+
+            alert('Фото успішно завантажено!');
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err))
+                alert(err.response?.data?.message || 'Помилка завантаження файлу');
+        }
+    };
+
+    const handleDeleteServerFile = async (e: React.MouseEvent, fileName: string) => {
+        e.stopPropagation();
+
+        const pureName = fileName.replace('/uploads/', '');
+
+        if (!window.confirm(`Видалити файл ${pureName} з сервера назавжди?`)) return;
+
+        try {
+            await api.delete(`/rooms/meta/server-files/${encodeURIComponent(pureName)}`);
+            setTempImages((prev) => prev.filter((img) => img.url !== fileName));
+            fetchServerFiles();
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err))
+                alert(err.response?.data?.message || 'Помилка при видаленні файлу');
+        }
+    };
+
     if (loading)
         return (
             <div className="p-20 text-center animate-bounce font-black text-primary">
@@ -758,6 +797,29 @@ export const AdminInventoryPage = () => {
                             </div>
                         </div>
 
+                        {/* Завантаження з комп'ютера */}
+                        <div className="mb-6 p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 hover:bg-slate-50 transition-all text-center">
+                            <label className="cursor-pointer">
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleFileUpload}
+                                />
+                                <div className="flex flex-col items-center gap-2">
+                                    <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary mx-auto">
+                                        <Plus size={24} />
+                                    </div>
+                                    <span className="text-sm font-black text-slate-700">
+                                        Завантажити з комп'ютера
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                        Файл збережеться на сервері
+                                    </span>
+                                </div>
+                            </label>
+                        </div>
+
                         {/* Вибір завантажених */}
                         <label className="text-xs font-black uppercase text-slate-400 block mb-3 ml-1">
                             Або оберіть із завантажених на сервер
@@ -780,7 +842,19 @@ export const AdminInventoryPage = () => {
                                         className="w-full h-full object-cover"
                                         alt="server asset"
                                     />
-                                    <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        <span className="bg-white text-primary text-[10px] font-black px-2 py-1 rounded-lg shadow-xl uppercase">
+                                            Обрати
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => handleDeleteServerFile(e, file)}
+                                        className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 shadow-lg z-50 pointer-events-auto"
+                                        title="Видалити з сервера"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
                             ))}
                             {serverFiles.length === 0 && (
