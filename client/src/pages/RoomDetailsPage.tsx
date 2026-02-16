@@ -217,6 +217,14 @@ export const RoomDetailsPage = () => {
         return '';
     };
 
+    const formatImageUrl = (url: string) => {
+        if (!url)
+            return 'https://www.ca.kayak.com/rimg/dimg/dynamic/186/2023/08/295ffd3a54bd51fc33810ce59382d1da.webp';
+        // Якщо шлях починається з http - це зовнішнє посилання, повертаємо як є.
+        // Якщо ні - додаємо адресу нашого бекенду.
+        return url.startsWith('http') ? url : `http://localhost:5000${url}`;
+    };
+
     if (loading)
         return (
             <div className="p-20 text-center animate-pulse font-bold text-primary">
@@ -225,9 +233,7 @@ export const RoomDetailsPage = () => {
         );
     if (!room) return <div className="p-20 text-center">Номер не знайдено</div>;
 
-    const currentImageUrl =
-        room.roomType.images[activeImgIndex]?.url ||
-        'https://www.ca.kayak.com/rimg/dimg/dynamic/186/2023/08/295ffd3a54bd51fc33810ce59382d1da.webp';
+    const currentImageUrl = formatImageUrl(room.roomType.images[activeImgIndex]?.url);
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -287,9 +293,9 @@ export const RoomDetailsPage = () => {
                                     }`}
                                 >
                                     <img
-                                        src={img.url}
+                                        src={formatImageUrl(img.url)}
                                         className="w-full h-full object-cover"
-                                        alt="thumbnail"
+                                        alt="server asset"
                                     />
                                 </button>
                             ))}

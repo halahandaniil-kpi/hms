@@ -64,9 +64,11 @@ export const RoomsPage = () => {
                     const primaryImage =
                         room.roomType.images.find((img) => img.isPrimary) ||
                         room.roomType.images[0];
-                    const imageUrl =
-                        primaryImage?.url ||
-                        'https://www.ca.kayak.com/rimg/dimg/dynamic/186/2023/08/295ffd3a54bd51fc33810ce59382d1da.webp';
+                    const imageUrl = primaryImage?.url
+                        ? primaryImage.url.startsWith('http')
+                            ? primaryImage.url
+                            : `http://localhost:5000${primaryImage.url}`
+                        : 'https://www.ca.kayak.com/rimg/dimg/dynamic/186/2023/08/295ffd3a54bd51fc33810ce59382d1da.webp';
                     return (
                         <article
                             key={room.id}
