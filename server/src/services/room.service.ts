@@ -7,7 +7,11 @@ export const getAllRooms = async () => {
         include: {
             roomType: {
                 include: {
-                    images: true,
+                    images: {
+                        orderBy: {
+                            isPrimary: 'desc',
+                        },
+                    },
                     bedType: true,
                     amenities: {
                         include: { amenity: true },

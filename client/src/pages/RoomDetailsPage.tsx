@@ -110,13 +110,14 @@ export const RoomDetailsPage = () => {
                 ]);
 
                 const roomData: Room = roomRes.data;
-                setRoom(roomData);
 
-                // Встановлюємо початкове фото
                 if (roomData.roomType.images) {
-                    const primaryIdx = roomData.roomType.images.findIndex((img) => img.isPrimary);
-                    setActiveImgIndex(primaryIdx !== -1 ? primaryIdx : 0);
+                    roomData.roomType.images.sort(
+                        (a, b) => Number(b.isPrimary) - Number(a.isPrimary),
+                    );
                 }
+                setRoom(roomData);
+                setActiveImgIndex(0);
 
                 // Перетворюємо різні формати бази в один формат для фронтенду
                 const formattedBookings: UnifiedDate[] = datesRes.data.bookings.map(

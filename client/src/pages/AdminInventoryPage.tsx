@@ -189,7 +189,11 @@ export const AdminInventoryPage = () => {
             bedTypeId: type.bedType?.id.toString(),
             amenityIds: type.amenities?.map((a) => a.amenity.id) || [],
         });
-        setTempImages(type.images || []);
+        const sortedImages = [...(type.images || [])].sort(
+            (a, b) => Number(b.isPrimary) - Number(a.isPrimary),
+        );
+
+        setTempImages(sortedImages);
         fetchServerFiles();
     };
 
