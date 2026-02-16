@@ -260,41 +260,32 @@ export const AdminDashboardPage = () => {
                                     </td>
                                     <td className="p-6">{getStatusBadge(b.status)}</td>
                                     <td className="p-6">
-                                        {b.payment ? (
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-black">
-                                                        {b.totalPrice} ₴
-                                                    </span>
-                                                    {getPaymentStatusBadge(b.payment.status)}
-                                                </div>
-                                                {b.payment.status === 'PENDING' && (
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-black">
+                                                    {b.totalPrice} ₴
+                                                </span>
+                                                {b.payment &&
+                                                    getPaymentStatusBadge(b.payment.status)}
+                                            </div>
+                                            {b.payment?.status === 'PENDING' && (
+                                                <button
+                                                    onClick={() => confirmPayment(b.payment!.id)}
+                                                    className="text-[9px] bg-primary text-white px-2 py-1 rounded font-bold uppercase"
+                                                >
+                                                    Підтвердити оплату
+                                                </button>
+                                            )}
+                                            {user?.role === 'ADMIN' &&
+                                                b.payment?.status === 'COMPLETED' && (
                                                     <button
-                                                        onClick={() =>
-                                                            confirmPayment(b.payment!.id)
-                                                        }
-                                                        className="text-[9px] bg-primary text-white px-2 py-1 rounded font-bold uppercase"
+                                                        onClick={() => handleRefund(b.payment!.id)}
+                                                        className="text-[9px] border border-purple-200 text-purple-600 px-2 py-1 rounded hover:bg-purple-50 font-bold uppercase"
                                                     >
-                                                        Підтвердити оплату
+                                                        Оформити повернення
                                                     </button>
                                                 )}
-                                                {user?.role === 'ADMIN' &&
-                                                    b.payment.status === 'COMPLETED' && (
-                                                        <button
-                                                            onClick={() =>
-                                                                handleRefund(b.payment!.id)
-                                                            }
-                                                            className="text-[9px] border border-purple-200 text-purple-600 px-2 py-1 rounded hover:bg-purple-50 font-bold uppercase"
-                                                        >
-                                                            Оформити повернення
-                                                        </button>
-                                                    )}
-                                            </div>
-                                        ) : (
-                                            <span className="text-sm font-bold text-slate-300">
-                                                Очікує оплати
-                                            </span>
-                                        )}
+                                        </div>
                                     </td>
                                     <td className="p-6 text-right">
                                         <div className="flex justify-end gap-2">
