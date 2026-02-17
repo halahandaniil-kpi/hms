@@ -66,4 +66,30 @@ router.delete(
     RoomController.deleteBedType,
 );
 
+// Управління обслуговуванням
+router.get(
+    '/meta/maintenance',
+    authenticate,
+    authorize(['ADMIN', 'RECEPTIONIST']),
+    RoomController.getMaintenanceLogs,
+);
+router.post(
+    '/meta/maintenance',
+    authenticate,
+    authorize(['ADMIN', 'RECEPTIONIST']),
+    RoomController.addMaintenanceLog,
+);
+router.patch(
+    '/meta/maintenance/:id',
+    authenticate,
+    authorize(['ADMIN', 'RECEPTIONIST']),
+    RoomController.updateMaintenanceLog,
+);
+router.delete(
+    '/meta/maintenance/:id',
+    authenticate,
+    authorize(['ADMIN', 'RECEPTIONIST']),
+    RoomController.deleteMaintenanceLog,
+);
+
 export default router;

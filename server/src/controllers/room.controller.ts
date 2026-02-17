@@ -207,3 +207,56 @@ export const deleteServerFile = async (req: Request, res: Response) => {
         res.status(400).json({ message: error.message });
     }
 };
+
+// --- ОБСЛУГОВУВАННЯ ---
+export const getMaintenanceLogs = async (req: Request, res: Response) => {
+    try {
+        const logs = await RoomService.getAllMaintenanceLogs();
+        res.json(logs);
+    } catch (error) {
+        res.status(500).json({ message: 'Помилка отримання логів' });
+    }
+};
+
+export const addMaintenanceLog = async (req: any, res: Response) => {
+    try {
+        const { roomId, description, startDate, endDate } = req.body;
+        const staffId = req.user.userId; // Беремо ID того, хто створює запис
+
+        const log = await RoomService.createMaintenanceLog({
+            roomId: Number(roomId),
+            staffId,
+            description,
+            startDate: new Date(startDate),
+            endDate: endDate ? new Date(endDate) : null,
+        });
+        res.status(201).json(log);
+    } catch (error) {
+        res.status(400).json({ message: 'Помилка створення запису' });
+    }
+};
+
+export const updateMaintenanceLog = async (req: Request, res: Response) => {
+    try {
+        const id = parseId(req.params.id);
+        const { description, startDate, endDate } = req.body;
+        const updated = await RoomService.updateMaintenanceLog(id, {
+            description,
+            startDate: new Date(startDate),
+            endDate: endDate ? new Date(endDate) : null,
+        });
+        res.json(updated);
+    } catch (error) {
+        res.status(400).json({ message: 'Помилка оновлення запису' });
+    }
+};
+
+export const deleteMaintenanceLog = async (req: Request, res: Response) => {
+    try {
+        const id = parseId(req.params.id);
+        await RoomService.deleteMaintenanceLog(id);
+        res.json({ message: 'Запис у журналі видалено' });
+    } catch (error) {
+        res.status(400).json({ message: 'Помилка видалення запису' });
+    }
+};

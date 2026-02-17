@@ -200,3 +200,36 @@ export const deleteServerFile = async (filename: string) => {
     }
     throw new Error('Файл не знайдено на сервері');
 };
+
+// --- Maintenance Logs ---
+
+export const createMaintenanceLog = async (data: {
+    roomId: number;
+    staffId: number;
+    description: string;
+    startDate: Date;
+    endDate?: Date | null;
+}) => {
+    return await prisma.maintenanceLog.create({ data });
+};
+
+export const getAllMaintenanceLogs = async () => {
+    return await prisma.maintenanceLog.findMany({
+        include: {
+            room: true,
+            staff: { select: { fullName: true } },
+        },
+        orderBy: { startDate: 'desc' },
+    });
+};
+
+export const updateMaintenanceLog = async (id: number, data: any) => {
+    return await prisma.maintenanceLog.update({
+        where: { id },
+        data,
+    });
+};
+
+export const deleteMaintenanceLog = async (id: number) => {
+    return await prisma.maintenanceLog.delete({ where: { id } });
+};

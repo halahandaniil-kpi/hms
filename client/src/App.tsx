@@ -8,6 +8,7 @@ import { MyBookingsPage } from './pages/MyBookingsPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AdminInventoryPage } from './pages/AdminInventoryPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { MaintenancePage } from './pages/MaintenancePage';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -33,6 +34,12 @@ const Navbar = () => {
                                 className="text-primary hover:text-blue-700 transition-colors border-b-2 border-primary"
                             >
                                 Бронювання
+                            </Link>
+                            <Link
+                                to="/admin/maintenance"
+                                className="text-slate-600 hover:text-primary transition-colors font-bold uppercase text-sm tracking-widest"
+                            >
+                                Журнал робіт
                             </Link>
                             {user.role === 'ADMIN' && (
                                 <Link
@@ -90,6 +97,7 @@ function App() {
                         <Route path="/bookings/my" element={<MyBookingsPage />} />
                         <Route path="/admin" element={<AdminDashboardPage />} />
                         <Route path="/admin/inventory" element={<AdminInventoryPage />} />
+                        <Route path="/admin/maintenance" element={<MaintenancePage />} />
                         <Route path="/profile" element={<ProfilePage />} />
                     </Routes>
                 </div>
