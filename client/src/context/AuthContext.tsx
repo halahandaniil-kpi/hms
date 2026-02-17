@@ -16,6 +16,7 @@ interface AuthContextType {
     loading: boolean;
     login: (userData: User, accessToken: string, refreshToken: string) => void;
     logout: () => void;
+    updateUser: (newUser: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,6 +40,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('refreshToken');
     };
 
+    const updateUser = (newUser: User) => {
+        setUser(newUser);
+    };
+
     useEffect(() => {
         const initAuth = async () => {
             const storedToken = localStorage.getItem('token');
@@ -60,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser }}>
             {!loading ? (
                 children
             ) : (

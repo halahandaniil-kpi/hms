@@ -7,6 +7,7 @@ import { RoomDetailsPage } from './pages/RoomDetailsPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AdminInventoryPage } from './pages/AdminInventoryPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -49,9 +50,11 @@ const Navbar = () => {
                     {user ? (
                         <div className="flex items-center gap-4">
                             <span className="text-slate-400">|</span>
-                            <span className="text-slate-900 lowercase font-medium">
-                                {user.email}
-                            </span>
+                            <Link to="/profile" className="flex flex-col items-end group">
+                                <span className="text-slate-900 group-hover:text-primary transition-colors lowercase font-medium text-[12px] leading-none">
+                                    {user.email}
+                                </span>
+                            </Link>
                             {user && (user.role === 'ADMIN' || user.role === 'RECEPTIONIST') && (
                                 <span className="font-medium text-primary">{user.role}</span>
                             )}
@@ -87,6 +90,7 @@ function App() {
                         <Route path="/bookings/my" element={<MyBookingsPage />} />
                         <Route path="/admin" element={<AdminDashboardPage />} />
                         <Route path="/admin/inventory" element={<AdminInventoryPage />} />
+                        <Route path="/profile" element={<ProfilePage />} />
                     </Routes>
                 </div>
             </BrowserRouter>
