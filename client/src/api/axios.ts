@@ -19,8 +19,14 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
+        // Якщо помилка 401, але це запит на LOGIN або REGISTER - нічого не робимо,
+        // просто прокидаємо помилку далі в компонент сторінки.
+        const isAuthPath =
+            originalRequest.url.includes('/auth/login') ||
+            originalRequest.url.includes('/auth/register');
+
         // Якщо помилка 401 і ми ще не пробували оновити токен
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthPath) {
             originalRequest._retry = true;
 
             try {
@@ -43,7 +49,10 @@ api.interceptors.response.use(
                 // Якщо рефреш не вдався - розлогінюємо користувача
                 localStorage.removeItem('token');
                 localStorage.removeItem('refreshToken');
-                window.location.href = '/login';
+                // Тільки якщо ми НЕ на сторінці логіну, перекидаємо туди
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
                 return Promise.reject(refreshError);
             }
         }
