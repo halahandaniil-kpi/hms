@@ -6,7 +6,7 @@ import * as ReviewController from '../controllers/review.controller.js';
 const router = Router();
 
 // Тільки залогінені користувачі можуть бронювати та бачити свої броні
-router.post('/', authenticate, BookingController.create);
+router.post('/', authenticate, authorize(['GUEST']), BookingController.create);
 router.get('/my', authenticate, BookingController.getMyBookings);
 router.post('/review', authenticate, ReviewController.addReview);
 router.get('/room/:id/taken-dates', BookingController.getTakenDates);

@@ -556,13 +556,22 @@ export const RoomDetailsPage = () => {
 
                                 <button
                                     type="submit"
-                                    className="w-full bg-primary text-white py-4 rounded-2xl font-black text-lg shadow-xl hover:bg-blue-700 transition-all active:scale-95"
+                                    disabled={user ? user.role !== 'GUEST' : false}
+                                    className={`w-full py-4 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 ${
+                                        !user
+                                            ? 'bg-primary text-white hover:bg-blue-700'
+                                            : user.role === 'GUEST'
+                                              ? 'bg-primary text-white hover:bg-blue-700'
+                                              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                    }`}
                                 >
-                                    {user
-                                        ? bookingData.paymentMethod === 'CARD'
-                                            ? 'Забронювати та оплатити'
-                                            : 'Забронювати'
-                                        : 'Увійдіть для бронювання'}
+                                    {!user
+                                        ? 'Увійдіть для бронювання'
+                                        : user.role === 'GUEST'
+                                          ? bookingData.paymentMethod === 'CARD'
+                                              ? 'Забронювати та оплатити'
+                                              : 'Забронювати'
+                                          : 'Бронювання доступне лише гостям'}
                                 </button>
                             </form>
                         )}
