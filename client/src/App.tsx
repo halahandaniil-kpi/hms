@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { RoomsPage } from './pages/RoomsPage';
 import { LoginPage } from './pages/LoginPage';
@@ -12,6 +12,17 @@ import { MaintenancePage } from './pages/MaintenancePage';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
+    const location = useLocation();
+
+    const getLinkStyle = (path: string) => {
+        const isActive = location.pathname === path;
+        const baseClass = 'transition-colors font-bold uppercase text-sm tracking-widest pb-1 ';
+
+        return isActive
+            ? `${baseClass} text-primary border-b-2 border-primary`
+            : `${baseClass} text-slate-600 hover:text-primary`;
+    };
+
     return (
         <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
@@ -20,38 +31,32 @@ const Navbar = () => {
                 </Link>
                 <div className="flex gap-6 items-center font-bold text-sm uppercase tracking-widest">
                     {user && user.role === 'GUEST' && (
-                        <Link
-                            to="/bookings/my"
-                            className="text-slate-600 hover:text-primary transition-colors"
-                        >
+                        <Link to="/bookings/my" className={getLinkStyle('/bookings/my')}>
                             Мої бронювання
                         </Link>
                     )}
                     {user && (user.role === 'ADMIN' || user.role === 'RECEPTIONIST') && (
                         <div className="flex gap-4">
-                            <Link
-                                to="/admin"
-                                className="text-primary hover:text-blue-700 transition-colors border-b-2 border-primary"
-                            >
+                            <Link to="/admin" className={getLinkStyle('/admin')}>
                                 Бронювання
                             </Link>
                             <Link
                                 to="/admin/maintenance"
-                                className="text-slate-600 hover:text-primary transition-colors font-bold uppercase text-sm tracking-widest"
+                                className={getLinkStyle('/admin/maintenance')}
                             >
                                 Журнал робіт
                             </Link>
                             {user.role === 'ADMIN' && (
                                 <Link
                                     to="/admin/inventory"
-                                    className="text-slate-600 hover:text-primary transition-colors"
+                                    className={getLinkStyle('/admin/inventory')}
                                 >
                                     Фонд
                                 </Link>
                             )}
                         </div>
                     )}
-                    <Link to="/" className="text-slate-600 hover:text-primary transition-colors">
+                    <Link to="/" className={getLinkStyle('/')}>
                         Номери
                     </Link>
                     {user ? (
