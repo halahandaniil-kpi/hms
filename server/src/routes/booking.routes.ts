@@ -11,6 +11,12 @@ router.get('/my', authenticate, BookingController.getMyBookings);
 router.post('/review', authenticate, ReviewController.addReview);
 router.get('/room/:id/taken-dates', BookingController.getTakenDates);
 router.patch('/:id/cancel', authenticate, BookingController.cancel);
+router.post(
+    '/admin-create',
+    authenticate,
+    authorize(['ADMIN', 'RECEPTIONIST']),
+    BookingController.adminCreate,
+);
 
 // Отримати ВСІ бронювання (тільки для ADMIN та RECEPTIONIST)
 router.get('/all', authenticate, authorize(['ADMIN', 'RECEPTIONIST']), BookingController.getAll);

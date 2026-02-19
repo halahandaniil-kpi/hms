@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import * as UserService from '../services/user.service.js';
 import { Prisma } from '@prisma/client';
@@ -15,5 +15,14 @@ export const updateMe = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ message: 'Ця електронна пошта вже зайнята' });
         }
         res.status(500).json({ message: 'Помилка при оновленні профілю' });
+    }
+};
+
+export const getGuests = async (req: Request, res: Response) => {
+    try {
+        const guests = await UserService.getAllGuests();
+        res.json(guests);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Помилка при отриманні списку гостей' });
     }
 };

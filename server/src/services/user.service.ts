@@ -16,3 +16,10 @@ export const updateUserProfile = async (
         },
     });
 };
+
+export const getAllGuests = async () => {
+    return await prisma.user.findMany({
+        where: { role: 'GUEST' },
+        select: { id: true, fullName: true, email: true, phone: true },
+    });
+};

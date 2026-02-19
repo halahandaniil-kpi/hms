@@ -12,7 +12,22 @@ import {
     XCircle,
     ChevronDown,
     CheckCircle,
+    Plus,
+    X,
+    Calendar,
+    CreditCard,
+    Wallet,
 } from 'lucide-react';
+import DatePicker, { registerLocale } from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { uk } from 'date-fns/locale';
+registerLocale('uk', uk as unknown as import('date-fns').Locale);
+
+interface UnifiedDate {
+    start: Date;
+    end: Date;
+    type: 'booking' | 'maintenance';
+}
 
 interface Booking {
     id: number;
@@ -25,6 +40,23 @@ interface Booking {
     payment?: { id: number; status: string };
 }
 
+interface AvailableRoom {
+    id: number;
+    roomNumber: string;
+    roomType: { name: string };
+    status: string;
+}
+
+interface ApiBookingDates {
+    checkInDate: string;
+    checkOutDate: string;
+}
+
+interface ApiMaintenanceDates {
+    startDate: string;
+    endDate: string | null;
+}
+
 export const AdminDashboardPage = () => {
     const { user } = useAuth();
 
@@ -33,6 +65,36 @@ export const AdminDashboardPage = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [guests, setGuests] = useState<
+        { id: number; fullName: string; email: string; phone: string }[]
+    >([]);
+    const [availableRooms, setAvailableRooms] = useState<AvailableRoom[]>([]);
+    const [adminTakenDates, setAdminTakenDates] = useState<UnifiedDate[]>([]);
+
+    const [isNewGuest, setIsNewGuest] = useState(false);
+    const [newGuestData, setNewGuestData] = useState({ fullName: '', email: '', phone: '' });
+
+    const [adminForm, setAdminForm] = useState({
+        targetUserId: '',
+        roomId: '',
+        checkIn: '',
+        checkOut: '',
+        paymentMethod: 'CARD',
+        specialRequests: '',
+    });
+
+    const [guestSearchTerm, setGuestSearchTerm] = useState('');
+    const [isGuestDropdownOpen, setIsGuestDropdownOpen] = useState(false);
+
+    // Фільтрація списку гостей у реальному часі
+    const filteredGuests = guests.filter(
+        (g) =>
+            g.fullName.toLowerCase().includes(guestSearchTerm.toLowerCase()) ||
+            g.email.toLowerCase().includes(guestSearchTerm.toLowerCase()) ||
+            g.phone?.toLowerCase().includes(guestSearchTerm.toLowerCase()),
+    );
 
     const fetchAllBookings = async () => {
         try {
@@ -43,9 +105,44 @@ export const AdminDashboardPage = () => {
         }
     };
 
+    const resetAdminModal = () => {
+        setAdminForm({
+            targetUserId: '',
+            roomId: '',
+            checkIn: '',
+            checkOut: '',
+            paymentMethod: 'CARD',
+            specialRequests: '',
+        });
+        setGuestSearchTerm('');
+        setAdminTakenDates([]);
+        setNewGuestData({ fullName: '', email: '', phone: '' });
+        setIsNewGuest(false);
+        setIsModalOpen(false);
+    };
+
     useEffect(() => {
+        if (adminForm.roomId && isModalOpen) {
+            api.get(`/bookings/room/${adminForm.roomId}/taken-dates`).then((res) => {
+                const formattedBookings: UnifiedDate[] = res.data.bookings.map(
+                    (b: ApiBookingDates) => ({
+                        start: new Date(b.checkInDate),
+                        end: new Date(b.checkOutDate),
+                        type: 'booking',
+                    }),
+                );
+                const formattedMaintenance: UnifiedDate[] = res.data.maintenance.map(
+                    (m: ApiMaintenanceDates) => ({
+                        start: new Date(m.startDate),
+                        end: new Date(m.endDate || Date.now() + 31536000000),
+                        type: 'maintenance',
+                    }),
+                );
+                setAdminTakenDates([...formattedBookings, ...formattedMaintenance]);
+            });
+        }
         fetchAllBookings();
-    }, []);
+    }, [adminForm.roomId, isModalOpen]);
 
     const handleRefund = async (paymentId: number) => {
         if (!window.confirm('Ви впевнені, що хочете оформити повернення коштів?')) return;
@@ -141,6 +238,77 @@ export const AdminDashboardPage = () => {
         return matchesSearch && matchesStatus;
     });
 
+    const openBookingModal = async () => {
+        try {
+            const [gRes, rRes] = await Promise.all([api.get('/auth/guests'), api.get('/rooms')]);
+            setGuests(gRes.data);
+            setAvailableRooms(rRes.data);
+            setIsModalOpen(true);
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                alert(err.response?.data?.message || 'Помилка завантаження даних для бронювання');
+            }
+        }
+    };
+
+    const handleAdminBooking = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!adminForm.checkIn || !adminForm.checkOut) return alert('Оберіть дати!');
+
+        try {
+            const payload = {
+                roomId: adminForm.roomId,
+                checkIn: adminForm.checkIn,
+                checkOut: adminForm.checkOut,
+                specialRequests: adminForm.specialRequests,
+                // Якщо новий гість - передаємо його дані, якщо ні - тільки ID
+                targetUserId: isNewGuest ? null : adminForm.targetUserId,
+                newGuest: isNewGuest ? newGuestData : null,
+            };
+
+            const res = await api.post('/bookings/admin-create', payload);
+
+            await api.post('/payments/pay', {
+                bookingId: res.data.id,
+                paymentMethod: adminForm.paymentMethod,
+                transactionId:
+                    adminForm.paymentMethod === 'CARD' ? `ADMIN_CARD_${Date.now()}` : undefined,
+            });
+
+            const isPaidNow = adminForm.paymentMethod === 'CARD';
+
+            alert(
+                isPaidNow
+                    ? 'Бронювання та оплату успішно оформлено!'
+                    : 'Бронювання успішно оформлено!',
+            );
+
+            resetAdminModal();
+            fetchAllBookings();
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                alert(err.response?.data?.message || 'Помилка при створенні');
+            }
+        }
+    };
+
+    const getAdminDayClassName = (date: Date) => {
+        const checkDate = new Date(date);
+        checkDate.setHours(0, 0, 0, 0);
+
+        for (const period of adminTakenDates) {
+            const start = new Date(period.start);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(period.end);
+            end.setHours(0, 0, 0, 0);
+
+            if (checkDate >= start && checkDate <= end) {
+                return period.type === 'maintenance' ? 'date-maintenance' : 'date-occupied';
+            }
+        }
+        return '';
+    };
+
     if (loading)
         return (
             <div className="p-20 text-center animate-pulse font-black text-primary">
@@ -160,8 +328,14 @@ export const AdminDashboardPage = () => {
                     </p>
                 </div>
 
-                {/* ПАНЕЛЬ ФІЛЬТРІВ */}
+                {/* ПАНЕЛЬ ФІЛЬТРІВ ТА ДОДАВАННЯ */}
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                    <button
+                        onClick={openBookingModal}
+                        className="bg-primary text-white px-6 py-2 rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-100"
+                    >
+                        <Plus size={18} /> Нове бронювання
+                    </button>
                     <div className="relative flex-grow">
                         <Search
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -353,6 +527,290 @@ export const AdminDashboardPage = () => {
                     </div>
                 )}
             </div>
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <form
+                        onSubmit={handleAdminBooking}
+                        className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-200"
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
+                                Оформити бронь
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={resetAdminModal}
+                                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                            >
+                                <X />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* Гість */}
+                            <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsNewGuest(false)}
+                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${!isNewGuest ? 'bg-white shadow-sm text-primary' : 'text-slate-400'}`}
+                                >
+                                    Існуючий клієнт
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsNewGuest(true)}
+                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${isNewGuest ? 'bg-white shadow-sm text-primary' : 'text-slate-400'}`}
+                                >
+                                    Новий клієнт
+                                </button>
+                            </div>
+
+                            {!isNewGuest ? (
+                                /* Вибір існуючого гостя */
+                                <div className="relative">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 ml-1">
+                                        Пошук існуючого гостя
+                                    </span>
+                                    <div className="relative mt-1">
+                                        <Search
+                                            className="absolute left-3 top-3 text-slate-400"
+                                            size={18}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Ім'я, пошта або телефон..."
+                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-primary font-bold text-sm"
+                                            value={guestSearchTerm}
+                                            onChange={(e) => {
+                                                setGuestSearchTerm(e.target.value);
+                                                setIsGuestDropdownOpen(true);
+                                            }}
+                                            onFocus={() => setIsGuestDropdownOpen(true)}
+                                        />
+                                    </div>
+
+                                    {/* Випадаючий список результатів */}
+                                    {isGuestDropdownOpen && guestSearchTerm && (
+                                        <div className="absolute z-[110] w-full mt-1 bg-white rounded-2xl shadow-2xl border border-slate-100 max-h-48 overflow-y-auto p-2 space-y-1">
+                                            {filteredGuests.length > 0 ? (
+                                                filteredGuests.map((g) => (
+                                                    <button
+                                                        key={g.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setAdminForm({
+                                                                ...adminForm,
+                                                                targetUserId: g.id.toString(),
+                                                            });
+                                                            setGuestSearchTerm(g.fullName);
+                                                            setIsGuestDropdownOpen(false);
+                                                        }}
+                                                        className={`w-full text-left p-3 rounded-xl transition-colors flex flex-col ${
+                                                            adminForm.targetUserId ===
+                                                            g.id.toString()
+                                                                ? 'bg-primary text-white'
+                                                                : 'hover:bg-slate-50'
+                                                        }`}
+                                                    >
+                                                        <span className="font-bold text-sm">
+                                                            {g.fullName}
+                                                        </span>
+                                                        <span
+                                                            className={`text-[10px] ${adminForm.targetUserId === g.id.toString() ? 'text-blue-100' : 'text-slate-400'}`}
+                                                        >
+                                                            {g.email} • {g.phone}
+                                                        </span>
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="p-4 text-center text-xs text-slate-400 font-bold uppercase italic">
+                                                    Нікого не знайдено
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Прихований інпут для валідації форми */}
+                                    <input type="hidden" required value={adminForm.targetUserId} />
+                                </div>
+                            ) : (
+                                /* Поля для нового гостя */
+                                <div className="space-y-3 animate-in fade-in duration-300">
+                                    <input
+                                        type="text"
+                                        placeholder="ПІБ гостя"
+                                        required
+                                        className="w-full p-3 bg-slate-50 rounded-xl outline-none text-sm font-bold"
+                                        value={newGuestData.fullName}
+                                        onChange={(e) =>
+                                            setNewGuestData({
+                                                ...newGuestData,
+                                                fullName: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                            type="email"
+                                            placeholder="Email"
+                                            required
+                                            className="p-3 bg-slate-50 rounded-xl border-none outline-none text-sm font-bold"
+                                            value={newGuestData.email}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setNewGuestData({ ...newGuestData, email: val });
+
+                                                // Перевірка на існуючого користувача
+                                                const existing = guests.find(
+                                                    (g) =>
+                                                        g.email.toLowerCase() === val.toLowerCase(),
+                                                );
+                                                if (existing) {
+                                                    setIsNewGuest(false); // Перемикаємо на "Існуючий клієнт"
+                                                    setAdminForm({
+                                                        ...adminForm,
+                                                        targetUserId: existing.id.toString(),
+                                                    });
+                                                    setGuestSearchTerm(existing.fullName); // Заповнюємо пошукове поле його ім'ям
+                                                }
+                                            }}
+                                        />
+                                        <input
+                                            type="tel"
+                                            placeholder="Телефон (опціонально)"
+                                            className="p-3 bg-slate-50 rounded-xl outline-none text-sm font-bold"
+                                            value={newGuestData.phone}
+                                            onChange={(e) =>
+                                                setNewGuestData({
+                                                    ...newGuestData,
+                                                    phone: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Номер */}
+                            <label className="block">
+                                <span className="text-[10px] font-black uppercase text-slate-400 ml-1">
+                                    Кімната
+                                </span>
+                                <select
+                                    required
+                                    className="w-full mt-1 p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-primary font-bold text-sm"
+                                    value={adminForm.roomId}
+                                    onChange={(e) =>
+                                        setAdminForm({ ...adminForm, roomId: e.target.value })
+                                    }
+                                >
+                                    <option value="">Спочатку оберіть номер...</option>
+                                    {availableRooms.map((r) => (
+                                        <option key={r.id} value={r.id}>
+                                            №{r.roomNumber} - {r.roomType.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            {/* Календар з перевіркою дат */}
+                            <div className="relative">
+                                <span className="text-[10px] font-black uppercase text-slate-400 ml-1">
+                                    Період проживання
+                                </span>
+                                <div className="relative mt-1">
+                                    <Calendar
+                                        className="absolute left-3 top-3 text-slate-400 z-10"
+                                        size={18}
+                                    />
+                                    <DatePicker
+                                        selectsRange={true}
+                                        startDate={
+                                            adminForm.checkIn ? new Date(adminForm.checkIn) : null
+                                        }
+                                        endDate={
+                                            adminForm.checkOut ? new Date(adminForm.checkOut) : null
+                                        }
+                                        onChange={(update: [Date | null, Date | null]) => {
+                                            const [start, end] = update;
+                                            setAdminForm({
+                                                ...adminForm,
+                                                checkIn: start
+                                                    ? start.toISOString().split('T')[0]
+                                                    : '',
+                                                checkOut: end
+                                                    ? end.toISOString().split('T')[0]
+                                                    : '',
+                                            });
+                                        }}
+                                        minDate={new Date()}
+                                        dayClassName={getAdminDayClassName}
+                                        locale="uk"
+                                        disabled={!adminForm.roomId}
+                                        placeholderText={
+                                            adminForm.roomId
+                                                ? 'Оберіть дати...'
+                                                : 'Оберіть номер для перевірки дат'
+                                        }
+                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-primary text-sm font-bold"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <span className="text-[10px] font-black uppercase text-slate-400 ml-1">
+                                    Метод оплати
+                                </span>
+                                <div className="flex gap-2 mt-1">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setAdminForm({ ...adminForm, paymentMethod: 'CARD' })
+                                        }
+                                        className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all font-bold ${adminForm.paymentMethod === 'CARD' ? 'border-primary bg-blue-50 text-primary' : 'border-slate-100 text-slate-400'}`}
+                                    >
+                                        <CreditCard size={20} />{' '}
+                                        <span className="text-[10px]">Зараз</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setAdminForm({ ...adminForm, paymentMethod: 'CASH' })
+                                        }
+                                        className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all font-bold ${adminForm.paymentMethod === 'CASH' ? 'border-primary bg-blue-50 text-primary' : 'border-slate-100 text-slate-400'}`}
+                                    >
+                                        <Wallet size={20} />{' '}
+                                        <span className="text-[10px]">При заселенні</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <label className="block">
+                                <span className="text-[10px] font-black uppercase text-slate-400 ml-1">
+                                    Побажання
+                                </span>
+                                <textarea
+                                    className="w-full mt-1 p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-primary h-16 resize-none text-sm"
+                                    value={adminForm.specialRequests}
+                                    onChange={(e) =>
+                                        setAdminForm({
+                                            ...adminForm,
+                                            specialRequests: e.target.value,
+                                        })
+                                    }
+                                />
+                            </label>
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="w-full mt-6 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all"
+                        >
+                            Створити бронювання
+                        </button>
+                    </form>
+                </div>
+            )}
         </main>
     );
 };

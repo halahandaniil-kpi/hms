@@ -2,7 +2,6 @@ import { Router } from 'express';
 import * as RoomController from '../controllers/room.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import multer from 'multer';
-import path from 'path';
 
 // Налаштування збереження файлів
 const storage = multer.diskStorage({

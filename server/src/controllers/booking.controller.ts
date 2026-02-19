@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as BookingService from '../services/booking.service.js';
 import prisma from '../lib/prisma.js';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
+import bcrypt from 'bcrypt';
 
 export const create = async (req: any, res: Response) => {
     try {
@@ -80,6 +81,49 @@ export const cancel = async (req: AuthRequest, res: Response) => {
 
         await BookingService.cancelBooking(Number(id), userId);
         res.json({ message: 'Бронювання успішно скасовано' });
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// Бронювання для користувача
+export const adminCreate = async (req: Request, res: Response) => {
+    try {
+        let { targetUserId } = req.body;
+        const { roomId, checkIn, checkOut, specialRequests, newGuest } = req.body;
+
+        // Якщо обрано "Новий гість", спочатку створюємо його акаунт
+        if (newGuest) {
+            const { email, fullName, phone } = newGuest;
+
+            // Перевіряємо, чи немає вже такого користувача
+            let user = await prisma.user.findUnique({ where: { email } });
+
+            if (!user) {
+                const randomPassword = Math.random().toString(36).slice(-10); // Випадковий пароль
+                const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+                user = await prisma.user.create({
+                    data: {
+                        email,
+                        fullName,
+                        phone: phone || null,
+                        passwordHash: hashedPassword,
+                        role: 'GUEST',
+                    },
+                });
+            }
+            targetUserId = user.id;
+        }
+
+        const booking = await BookingService.createBooking(
+            Number(targetUserId),
+            Number(roomId),
+            checkIn,
+            checkOut,
+            specialRequests,
+        );
+        res.status(201).json(booking);
     } catch (error: any) {
         res.status(400).json({ message: error.message });
     }

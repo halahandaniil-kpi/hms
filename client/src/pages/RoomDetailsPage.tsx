@@ -573,6 +573,12 @@ export const RoomDetailsPage = () => {
                                               : 'Забронювати'
                                           : 'Бронювання доступне лише гостям'}
                                 </button>
+                                {user && user.role !== 'GUEST' && (
+                                    <p className="mt-4 text-[11px] text-center text-orange-500 font-bold uppercase tracking-wider">
+                                        Ви увійшли як персонал. Для створення бронювання від імені
+                                        клієнта використовуйте адмін-панель.
+                                    </p>
+                                )}
                             </form>
                         )}
                     </div>
