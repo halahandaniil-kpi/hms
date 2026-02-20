@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import axios from 'axios';
-import { Plus, Trash2, Bed, Home, CheckSquare, Layers, X, Edit3, Star } from 'lucide-react';
+import { Plus, Trash2, Bed, Home, CheckSquare, Layers, X, Edit3, Star, Users } from 'lucide-react';
 
 interface Amenity {
     id: number;
@@ -38,9 +38,15 @@ interface Room {
     floor: number;
     roomType: { name: string };
 }
+interface Staff {
+    id: number;
+    fullName: string;
+    email: string;
+    phone: string | null;
+}
 
 export const AdminInventoryPage = () => {
-    const [activeTab, setActiveTab] = useState<'rooms' | 'types' | 'meta'>('rooms');
+    const [activeTab, setActiveTab] = useState<'rooms' | 'types' | 'meta' | 'staff'>('rooms');
     const [loading, setLoading] = useState(true);
 
     const [rooms, setRooms] = useState<Room[]>([]);
@@ -67,22 +73,33 @@ export const AdminInventoryPage = () => {
     const [showFilePicker, setShowFilePicker] = useState(false);
     const [tempImages, setTempImages] = useState<{ url: string; isPrimary: boolean }[]>([]);
 
+    const [receptionists, setReceptionists] = useState<Staff[]>([]);
+    const [isAddingStaff, setIsAddingStaff] = useState(false);
+    const [staffForm, setStaffForm] = useState({
+        fullName: '',
+        email: '',
+        phone: '',
+        password: '',
+    });
+
     const fetchData = async () => {
         try {
-            const [roomsRes, typesRes, amRes, btRes] = await Promise.all([
+            const [roomsRes, typesRes, amRes, btRes, staffRes] = await Promise.all([
                 api.get('/rooms'),
                 api.get('/rooms/types/all'),
                 api.get('/rooms/meta/amenities'),
                 api.get('/rooms/meta/bed-types'),
+                api.get('/auth/staff'),
             ]);
 
             setRooms(roomsRes.data);
             setRoomTypes(typesRes.data);
             setAmenities(amRes.data);
             setBedTypes(btRes.data);
+            setReceptionists(staffRes.data);
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
-                alert(err.response?.data?.message || 'Помилка завантаження фонду');
+                alert(err.response?.data?.message || 'Помилка завантаження фонду та персоналу');
             }
         } finally {
             setLoading(false);
@@ -260,6 +277,30 @@ export const AdminInventoryPage = () => {
         }
     };
 
+    const handleAddStaff = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.post('/auth/staff', staffForm);
+            setIsAddingStaff(false);
+            setStaffForm({ fullName: '', email: '', phone: '', password: '' });
+            fetchData();
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err))
+                alert(err.response?.data?.message || 'Помилка створення акаунта');
+        }
+    };
+
+    const handleDeleteStaff = async (id: number) => {
+        if (!window.confirm('Видалити доступ цього ресепшоніста?')) return;
+        try {
+            await api.delete(`/auth/staff/${id}`);
+            fetchData();
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err))
+                alert(err.response?.data?.message || 'Помилка при видаленні');
+        }
+    };
+
     if (loading)
         return (
             <div className="p-20 text-center animate-bounce font-black text-primary">
@@ -272,10 +313,10 @@ export const AdminInventoryPage = () => {
             <div className="flex justify-between items-end mb-10">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight text-uppercase">
-                        Управління фондом
+                        Управління фондом та персоналом
                     </h1>
                     <p className="text-slate-400 font-bold text-sm">
-                        Налаштування номерів, категорій та зручностей
+                        Налаштування номерів, категорій та зручностей. Управління персоналом
                     </p>
                 </div>
             </div>
@@ -299,6 +340,12 @@ export const AdminInventoryPage = () => {
                     className={`px-6 py-2 rounded-xl font-bold text-sm transition-all ${activeTab === 'meta' ? 'bg-white shadow-sm text-primary' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                     Довідники
+                </button>
+                <button
+                    onClick={() => setActiveTab('staff')}
+                    className={`px-6 py-2 rounded-xl font-bold text-sm transition-all ${activeTab === 'staff' ? 'bg-white shadow-sm text-primary' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    Персонал
                 </button>
             </div>
 
@@ -752,6 +799,117 @@ export const AdminInventoryPage = () => {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </section>
+            )}
+            {/* --- ВКЛАДКА: ПЕРСОНАЛ --- */}
+            {activeTab === 'staff' && (
+                <section className="animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                            <Users size={20} /> Ресепшоністи
+                        </h2>
+                        <button
+                            onClick={() => setIsAddingStaff(!isAddingStaff)}
+                            className="bg-primary text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center gap-2"
+                        >
+                            {isAddingStaff ? <X size={18} /> : <Plus size={18} />}
+                            {isAddingStaff ? 'Закрити' : 'Додати співробітника'}
+                        </button>
+                    </div>
+
+                    {isAddingStaff && (
+                        <form
+                            onSubmit={handleAddStaff}
+                            className="bg-white p-8 rounded-3xl shadow-xl border border-blue-100 mb-10 animate-in zoom-in-95"
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input
+                                    type="text"
+                                    placeholder="Повне ім'я"
+                                    required
+                                    className="p-3 bg-slate-50 rounded-xl outline-none"
+                                    value={staffForm.fullName}
+                                    onChange={(e) =>
+                                        setStaffForm({ ...staffForm, fullName: e.target.value })
+                                    }
+                                />
+                                <input
+                                    type="email"
+                                    placeholder="Email"
+                                    required
+                                    className="p-3 bg-slate-50 rounded-xl outline-none"
+                                    value={staffForm.email}
+                                    onChange={(e) =>
+                                        setStaffForm({ ...staffForm, email: e.target.value })
+                                    }
+                                />
+                                <input
+                                    type="tel"
+                                    placeholder="Телефон"
+                                    className="p-3 bg-slate-50 rounded-xl outline-none"
+                                    value={staffForm.phone}
+                                    onChange={(e) =>
+                                        setStaffForm({ ...staffForm, phone: e.target.value })
+                                    }
+                                />
+                                <input
+                                    type="password"
+                                    placeholder="Пароль для входу"
+                                    required
+                                    className="p-3 bg-slate-50 rounded-xl outline-none"
+                                    value={staffForm.password}
+                                    onChange={(e) =>
+                                        setStaffForm({ ...staffForm, password: e.target.value })
+                                    }
+                                />
+                            </div>
+                            <div className="mt-6 flex justify-end">
+                                <button
+                                    type="submit"
+                                    className="bg-slate-900 text-white px-10 py-3 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all"
+                                >
+                                    Створити акаунт персоналу
+                                </button>
+                            </div>
+                        </form>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {receptionists.map((person) => (
+                            <div
+                                key={person.id}
+                                className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-start group hover:border-primary/20 transition-all"
+                            >
+                                <div className="flex gap-4">
+                                    <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 font-black">
+                                        {person.fullName.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <div className="font-black text-slate-900">
+                                            {person.fullName}
+                                        </div>
+                                        <div className="text-[11px] text-slate-400 font-bold uppercase mt-0.5">
+                                            {person.email}
+                                        </div>
+                                        <div className="text-[11px] text-primary font-black mt-1 uppercase tracking-tighter">
+                                            Роль: RECEPTIONIST
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => handleDeleteStaff(person.id)}
+                                    className="text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
+                        ))}
+                        {receptionists.length === 0 && (
+                            <div className="col-span-full py-20 text-center text-slate-300 font-bold uppercase tracking-widest border-2 border-dashed rounded-3xl">
+                                Персонал ще не додано
+                            </div>
+                        )}
                     </div>
                 </section>
             )}

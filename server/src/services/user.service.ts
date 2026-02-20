@@ -17,9 +17,33 @@ export const updateUserProfile = async (
     });
 };
 
-export const getAllGuests = async () => {
+export const getUsersByRole = async (role: 'RECEPTIONIST' | 'GUEST') => {
     return await prisma.user.findMany({
-        where: { role: 'GUEST' },
-        select: { id: true, fullName: true, email: true, phone: true },
+        where: { role },
+        select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            createdAt: true,
+        },
     });
+};
+
+export const createStaff = async (data: {
+    email: string;
+    fullName: string;
+    phone?: string;
+    passwordHash: string;
+}) => {
+    return await prisma.user.create({
+        data: {
+            ...data,
+            role: 'RECEPTIONIST',
+        },
+    });
+};
+
+export const deleteUser = async (id: number) => {
+    return await prisma.user.delete({ where: { id } });
 };
