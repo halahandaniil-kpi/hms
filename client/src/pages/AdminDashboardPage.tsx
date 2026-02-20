@@ -755,6 +755,16 @@ export const AdminDashboardPage = () => {
                                         className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-primary text-sm font-bold"
                                     />
                                 </div>
+                                <div className="flex gap-4 mt-2 ml-1">
+                                    <div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400">
+                                        <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>{' '}
+                                        Зайнято
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400">
+                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>{' '}
+                                        Обслуговування
+                                    </div>
+                                </div>
                             </div>
 
                             <div>
