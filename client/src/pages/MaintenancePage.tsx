@@ -2,6 +2,16 @@ import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import axios from 'axios';
 import { Plus, Trash2, Edit3, X, Calendar, User, Home, CheckCircle } from 'lucide-react';
+import DatePicker, { registerLocale } from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { uk } from 'date-fns/locale';
+registerLocale('uk', uk as unknown as import('date-fns').Locale);
+
+interface UnifiedDate {
+    start: Date;
+    end: Date;
+    type: 'booking' | 'maintenance';
+}
 
 interface MaintenanceLog {
     id: number;
@@ -18,6 +28,16 @@ interface RoomOption {
     roomNumber: string;
 }
 
+interface ApiBooking {
+    checkInDate: string;
+    checkOutDate: string;
+}
+
+interface ApiMaintenance {
+    startDate: string;
+    endDate: string | null;
+}
+
 export const MaintenancePage = () => {
     const [logs, setLogs] = useState<MaintenanceLog[]>([]);
     const [rooms, setRooms] = useState<RoomOption[]>([]);
@@ -26,6 +46,8 @@ export const MaintenancePage = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [form, setForm] = useState({ roomId: '', description: '', startDate: '', endDate: '' });
+
+    const [takenDates, setTakenDates] = useState<UnifiedDate[]>([]);
 
     const fetchData = async () => {
         try {
@@ -41,8 +63,34 @@ export const MaintenancePage = () => {
     };
 
     useEffect(() => {
+        const loadRoomDates = async () => {
+            if (!form.roomId || !isAdding) {
+                setTakenDates([]);
+                return;
+            }
+            try {
+                const res = await api.get(`/bookings/room/${form.roomId}/taken-dates`);
+                const formattedBookings: UnifiedDate[] = res.data.bookings.map((b: ApiBooking) => ({
+                    start: new Date(b.checkInDate),
+                    end: new Date(b.checkOutDate),
+                    type: 'booking',
+                }));
+                const formattedMaintenance: UnifiedDate[] = res.data.maintenance.map(
+                    (m: ApiMaintenance) => ({
+                        start: new Date(m.startDate),
+                        end: new Date(m.endDate || Date.now() + 31536000000),
+                        type: 'maintenance',
+                    }),
+                );
+                setTakenDates([...formattedBookings, ...formattedMaintenance]);
+            } catch (err) {
+                console.error('Помилка завантаження дат', err);
+            }
+        };
+
+        loadRoomDates();
         fetchData();
-    }, []);
+    }, [form.roomId, isAdding]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -55,6 +103,7 @@ export const MaintenancePage = () => {
             setIsAdding(false);
             setEditingId(null);
             setForm({ roomId: '', description: '', startDate: '', endDate: '' });
+            setTakenDates([]);
             fetchData();
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) alert(err.response?.data?.message || 'Помилка');
@@ -69,6 +118,23 @@ export const MaintenancePage = () => {
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) alert(err.response?.data?.message || 'Помилка видалення');
         }
+    };
+
+    const getDayClassName = (date: Date) => {
+        const checkDate = new Date(date);
+        checkDate.setHours(0, 0, 0, 0);
+
+        for (const period of takenDates) {
+            const start = new Date(period.start);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(period.end);
+            end.setHours(0, 0, 0, 0);
+
+            if (checkDate >= start && checkDate <= end) {
+                return period.type === 'maintenance' ? 'date-maintenance' : 'date-occupied';
+            }
+        }
+        return '';
     };
 
     if (loading)
@@ -150,34 +216,51 @@ export const MaintenancePage = () => {
                                 />
                             </label>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <label className="block">
-                                    <span className="text-xs font-black uppercase text-slate-400 ml-1">
-                                        Дата початку
-                                    </span>
-                                    <input
-                                        type="date"
-                                        required
-                                        className="w-full mt-1 p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-primary"
-                                        value={form.startDate}
-                                        onChange={(e) =>
-                                            setForm({ ...form, startDate: e.target.value })
-                                        }
+                            <div className="col-span-full">
+                                <span className="text-xs font-black uppercase text-slate-400 ml-1">
+                                    Період проведення робіт
+                                </span>
+                                <div className="relative mt-1">
+                                    <Calendar
+                                        className="absolute left-3 top-3 text-slate-400 z-10"
+                                        size={18}
                                     />
-                                </label>
-                                <label className="block">
-                                    <span className="text-xs font-black uppercase text-slate-400 ml-1">
-                                        Дата завершення
-                                    </span>
-                                    <input
-                                        type="date"
-                                        className="w-full mt-1 p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-primary"
-                                        value={form.endDate}
-                                        onChange={(e) =>
-                                            setForm({ ...form, endDate: e.target.value })
+                                    <DatePicker
+                                        selectsRange={true}
+                                        startDate={form.startDate ? new Date(form.startDate) : null}
+                                        endDate={form.endDate ? new Date(form.endDate) : null}
+                                        onChange={(update: [Date | null, Date | null]) => {
+                                            const [start, end] = update;
+                                            setForm({
+                                                ...form,
+                                                startDate: start
+                                                    ? start.toISOString().split('T')[0]
+                                                    : '',
+                                                endDate: end ? end.toISOString().split('T')[0] : '',
+                                            });
+                                        }}
+                                        dayClassName={getDayClassName}
+                                        locale="uk"
+                                        disabled={!form.roomId}
+                                        placeholderText={
+                                            form.roomId
+                                                ? 'Оберіть дати робіт...'
+                                                : 'Спочатку оберіть номер'
                                         }
+                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-primary text-sm font-bold"
                                     />
-                                </label>
+                                </div>
+
+                                <div className="flex gap-4 mt-2 ml-1">
+                                    <div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400">
+                                        <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>{' '}
+                                        Гість у номері
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400">
+                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>{' '}
+                                        Інший ремонт
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
