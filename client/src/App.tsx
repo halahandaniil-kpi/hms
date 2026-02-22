@@ -9,8 +9,54 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AdminInventoryPage } from './pages/AdminInventoryPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { MaintenancePage } from './pages/MaintenancePage';
-import { useState, useEffect } from 'react';
-import { Menu, X as CloseIcon } from 'lucide-react';
+import { useState, useEffect, type ReactNode } from 'react';
+import { Menu, X, ShieldAlert, Home } from 'lucide-react';
+
+// Компонент для відображення помилки доступу
+const AccessDenied = () => (
+    <div className="min-h-[80vh] flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-red-50 text-red-500 rounded-3xl mb-6">
+                <ShieldAlert size={48} />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900 mb-4 uppercase tracking-tighter">
+                Доступ обмежено
+            </h1>
+            <p className="text-slate-500 mb-8 font-medium">
+                У вас немає прав для перегляду цієї сторінки.
+            </p>
+            <Link
+                to="/"
+                className="inline-flex items-center gap-2 bg-slate-900 text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-black transition-all shadow-xl"
+            >
+                <Home size={18} /> Повернутися на головну
+            </Link>
+        </div>
+    </div>
+);
+
+// Обгортка для захищених роутів
+interface ProtectedRouteProps {
+    children: ReactNode;
+    allowedRoles: string[];
+}
+
+const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
+    const { user, loading } = useAuth();
+
+    // Поки ми не знаємо, чи залогінений юзер (йде запит /me), показуємо пустий екран або лоадер
+    if (loading) return null;
+
+    // Якщо не залогінений - на логін
+    if (!user) return <LoginPage />;
+
+    // Якщо роль не підходить - показуємо блок "Доступ обмежено"
+    if (!allowedRoles.includes(user.role)) {
+        return <AccessDenied />;
+    }
+
+    return <>{children}</>;
+};
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -50,7 +96,7 @@ const Navbar = () => {
                     onClick={() => setIsOpen(!isOpen)}
                     className="lg:hidden p-2 text-slate-600 z-50"
                 >
-                    {isOpen ? <CloseIcon size={28} /> : <Menu size={28} />}
+                    {isOpen ? <X size={28} /> : <Menu size={28} />}
                 </button>
 
                 {/* ДЕСКТОПНЕ МЕНЮ (Приховане на мобільних) */}
@@ -216,11 +262,54 @@ function App() {
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/rooms/:id" element={<RoomDetailsPage />} />
-                        <Route path="/bookings/my" element={<MyBookingsPage />} />
-                        <Route path="/admin" element={<AdminDashboardPage />} />
-                        <Route path="/admin/inventory" element={<AdminInventoryPage />} />
-                        <Route path="/admin/maintenance" element={<MaintenancePage />} />
-                        <Route path="/profile" element={<ProfilePage />} />
+
+                        {/* ЗАХИЩЕНІ РОУТИ ДЛЯ ГІСТЬЯ */}
+                        <Route
+                            path="/bookings/my"
+                            element={
+                                <ProtectedRoute allowedRoles={['GUEST']}>
+                                    <MyBookingsPage />
+                                </ProtectedRoute>
+                            }
+                        />
+
+                        <Route
+                            path="/profile"
+                            element={
+                                <ProtectedRoute allowedRoles={['GUEST', 'ADMIN', 'RECEPTIONIST']}>
+                                    <ProfilePage />
+                                </ProtectedRoute>
+                            }
+                        />
+
+                        {/* ЗАХИЩЕНІ РОУТИ ДЛЯ ПЕРСОНАЛУ */}
+                        <Route
+                            path="/admin"
+                            element={
+                                <ProtectedRoute allowedRoles={['ADMIN', 'RECEPTIONIST']}>
+                                    <AdminDashboardPage />
+                                </ProtectedRoute>
+                            }
+                        />
+
+                        <Route
+                            path="/admin/maintenance"
+                            element={
+                                <ProtectedRoute allowedRoles={['ADMIN', 'RECEPTIONIST']}>
+                                    <MaintenancePage />
+                                </ProtectedRoute>
+                            }
+                        />
+
+                        {/* ТІЛЬКИ ДЛЯ АДМІНА */}
+                        <Route
+                            path="/admin/inventory"
+                            element={
+                                <ProtectedRoute allowedRoles={['ADMIN']}>
+                                    <AdminInventoryPage />
+                                </ProtectedRoute>
+                            }
+                        />
                     </Routes>
                 </div>
             </BrowserRouter>
