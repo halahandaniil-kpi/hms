@@ -3,100 +3,18 @@ import fs from 'fs';
 import path from 'path';
 
 export const getAllRooms = async () => {
-    const rooms = await prisma.room.findMany({
+    return await prisma.room.findMany({
         include: {
             roomType: {
-                include: {
-                    images: {
-                        orderBy: {
-                            isPrimary: 'desc',
-                        },
-                    },
-                    bedType: true,
-                    amenities: {
-                        include: { amenity: true },
-                    },
-                },
-            },
-            bookings: {
-                where: {
-                    status: 'CHECKED_OUT',
-                    review: { isNot: null }, // Беремо тільки ті броні, де є відгук
-                },
-                include: {
-                    review: true,
+                select: {
+                    name: true,
                 },
             },
         },
-    });
-
-    // Рахуємо рейтинг для кожної кімнати
-    return rooms.map((room) => {
-        const reviews = room.bookings.map((b) => b.review).filter(Boolean);
-        const reviewCount = reviews.length;
-
-        const totalRating = reviews.reduce((sum, r) => sum + (r?.rating || 0), 0);
-        const averageRating = reviewCount > 0 ? totalRating / reviewCount : 0;
-
-        // Повертаємо об'єкт у форматі, який очікує фронтенд (averageRating всередині roomType)
-        return {
-            ...room,
-            roomType: {
-                ...room.roomType,
-                averageRating,
-                reviewCount,
-            },
-        };
-    });
-};
-
-export const getRoomById = async (id: number) => {
-    const room = await prisma.room.findUnique({
-        where: { id },
-        include: {
-            roomType: {
-                include: {
-                    images: true,
-                    bedType: true,
-                    amenities: {
-                        include: { amenity: true },
-                    },
-                },
-            },
-            bookings: {
-                where: { status: 'CHECKED_OUT' },
-                include: {
-                    review: true,
-                    user: { select: { fullName: true } },
-                },
-            },
+        orderBy: {
+            roomNumber: 'asc',
         },
     });
-
-    if (!room) return null;
-
-    const reviews = room.bookings
-        .filter((b) => b.review)
-        .map((b) => ({
-            ...b.review,
-            booking: { user: b.user },
-        }));
-
-    const totalRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
-    const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
-
-    // Для консистентності з каталогом, додаємо дані і в roomType, і в корінь
-    return {
-        ...room,
-        reviews,
-        roomType: {
-            ...room.roomType,
-            averageRating,
-            reviewCount: reviews.length,
-        },
-        averageRating,
-        reviewCount: reviews.length,
-    };
 };
 
 // --- BedTypes ---
@@ -111,13 +29,78 @@ export const deleteAmenity = (id: number) => prisma.amenity.delete({ where: { id
 
 // --- RoomTypes ---
 export const getAllRoomTypes = async () => {
-    return await prisma.roomType.findMany({
+    const types = await prisma.roomType.findMany({
         include: {
             amenities: { include: { amenity: true } },
             bedType: true,
-            images: true,
+            images: { orderBy: { isPrimary: 'desc' } },
+            rooms: {
+                include: {
+                    bookings: {
+                        where: { status: 'CHECKED_OUT', review: { isNot: null } },
+                        include: { review: true },
+                    },
+                },
+            },
         },
     });
+
+    return types.map((type) => {
+        // Збираємо всі відгуки з усіх номерів цієї категорії
+        const allReviews = type.rooms.flatMap((r) =>
+            r.bookings.map((b) => b.review).filter(Boolean),
+        );
+        const reviewCount = allReviews.length;
+        const totalRating = allReviews.reduce((sum, r) => sum + (r?.rating || 0), 0);
+        const averageRating = reviewCount > 0 ? totalRating / reviewCount : 0;
+
+        return {
+            ...type,
+            averageRating,
+            reviewCount,
+        };
+    });
+};
+
+export const getRoomTypeById = async (id: number) => {
+    const type = await prisma.roomType.findUnique({
+        where: { id },
+        include: {
+            amenities: { include: { amenity: true } },
+            bedType: true,
+            images: { orderBy: { isPrimary: 'desc' } },
+            rooms: {
+                select: { id: true, roomNumber: true, status: true },
+            },
+        },
+    });
+
+    if (!type) return null;
+
+    // Отримуємо відгуки для всієї категорії через кімнати
+    const reviews = await prisma.review.findMany({
+        where: {
+            booking: {
+                room: { roomTypeId: id },
+            },
+        },
+        include: {
+            booking: {
+                include: { user: { select: { fullName: true } } },
+            },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+    const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+
+    return {
+        ...type,
+        reviews,
+        averageRating,
+        reviewCount: reviews.length,
+    };
 };
 
 export const createRoomType = (data: any) => {

@@ -40,13 +40,6 @@ interface Booking {
     payment?: { id: number; status: string };
 }
 
-interface AvailableRoom {
-    id: number;
-    roomNumber: string;
-    roomType: { name: string };
-    status: string;
-}
-
 interface ApiBookingDates {
     checkInDate: string;
     checkOutDate: string;
@@ -55,6 +48,19 @@ interface ApiBookingDates {
 interface ApiMaintenanceDates {
     startDate: string;
     endDate: string | null;
+}
+
+interface PhysicalRoom {
+    id: number;
+    roomNumber: string;
+    status: string;
+}
+
+interface DashboardRoomType {
+    id: number;
+    name: string;
+    basePrice: string;
+    rooms: PhysicalRoom[];
 }
 
 export const AdminDashboardPage = () => {
@@ -70,7 +76,10 @@ export const AdminDashboardPage = () => {
     const [guests, setGuests] = useState<
         { id: number; fullName: string; email: string; phone: string }[]
     >([]);
-    const [availableRooms, setAvailableRooms] = useState<AvailableRoom[]>([]);
+
+    const [roomTypes, setRoomTypes] = useState<DashboardRoomType[]>([]);
+    const [selectedCategoryId, setSelectedCategoryId] = useState('');
+
     const [adminTakenDates, setAdminTakenDates] = useState<UnifiedDate[]>([]);
 
     const [isNewGuest, setIsNewGuest] = useState(false);
@@ -114,6 +123,7 @@ export const AdminDashboardPage = () => {
             paymentMethod: 'CARD',
             specialRequests: '',
         });
+        setSelectedCategoryId('');
         setGuestSearchTerm('');
         setAdminTakenDates([]);
         setNewGuestData({ fullName: '', email: '', phone: '' });
@@ -227,7 +237,7 @@ export const AdminDashboardPage = () => {
         }
     };
 
-    // ЛОГІКА ФІЛЬТРАЦІЇ (виконується при кожному рендері)
+    // ЛОГІКА ФІЛЬТРАЦІЇ
     const filteredBookings = bookings.filter((b) => {
         const matchesSearch =
             b.user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -240,9 +250,12 @@ export const AdminDashboardPage = () => {
 
     const openBookingModal = async () => {
         try {
-            const [gRes, rRes] = await Promise.all([api.get('/auth/guests'), api.get('/rooms')]);
+            const [gRes, tRes] = await Promise.all([
+                api.get('/auth/guests'),
+                api.get('/rooms/types/all'),
+            ]);
             setGuests(gRes.data);
-            setAvailableRooms(rRes.data);
+            setRoomTypes(tRes.data);
             setIsModalOpen(true);
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
@@ -691,25 +704,63 @@ export const AdminDashboardPage = () => {
                                 </div>
                             )}
 
-                            {/* Номер */}
+                            {/* Категорія */}
                             <label className="block">
                                 <span className="text-[10px] font-black uppercase text-slate-400 ml-1">
-                                    Кімната
+                                    Категорія
                                 </span>
                                 <select
                                     required
                                     className="w-full mt-1 p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-primary font-bold text-sm"
+                                    value={selectedCategoryId}
+                                    onChange={(e) => {
+                                        setSelectedCategoryId(e.target.value);
+                                        setAdminForm({ ...adminForm, roomId: '' }); // Скидаємо вибрану кімнату при зміні категорії
+                                    }}
+                                >
+                                    <option value="">Оберіть категорію...</option>
+                                    {roomTypes.map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.name} ({t.basePrice} ₴)
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            {/* Номер */}
+                            <label className="block">
+                                <span className="text-[10px] font-black uppercase text-slate-400 ml-1">
+                                    Номер
+                                </span>
+                                <select
+                                    required
+                                    disabled={!selectedCategoryId}
+                                    className="w-full mt-1 p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-primary font-bold text-sm disabled:opacity-50"
                                     value={adminForm.roomId}
                                     onChange={(e) =>
                                         setAdminForm({ ...adminForm, roomId: e.target.value })
                                     }
                                 >
-                                    <option value="">Спочатку оберіть номер...</option>
-                                    {availableRooms.map((r) => (
-                                        <option key={r.id} value={r.id}>
-                                            №{r.roomNumber} - {r.roomType.name}
-                                        </option>
-                                    ))}
+                                    <option value="">
+                                        {selectedCategoryId
+                                            ? 'Оберіть №...'
+                                            : 'Спочатку оберіть категорію'}
+                                    </option>
+                                    {selectedCategoryId &&
+                                        roomTypes
+                                            .find((t) => t.id.toString() === selectedCategoryId)
+                                            ?.rooms.map((r) => (
+                                                <option
+                                                    key={r.id}
+                                                    value={r.id}
+                                                    disabled={r.status !== 'AVAILABLE'}
+                                                >
+                                                    №{r.roomNumber}{' '}
+                                                    {r.status !== 'AVAILABLE'
+                                                        ? `(${r.status})`
+                                                        : ''}
+                                                </option>
+                                            ))}
                                 </select>
                             </label>
 

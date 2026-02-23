@@ -261,9 +261,9 @@ function App() {
                         <Route path="/" element={<RoomsPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
-                        <Route path="/rooms/:id" element={<RoomDetailsPage />} />
+                        <Route path="/room-types/:id" element={<RoomDetailsPage />} />
 
-                        {/* ЗАХИЩЕНІ РОУТИ ДЛЯ ГІСТЬЯ */}
+                        {/* ЗАХИЩЕНІ РОУТИ ДЛЯ ГОСТЯ */}
                         <Route
                             path="/bookings/my"
                             element={

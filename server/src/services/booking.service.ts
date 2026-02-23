@@ -5,7 +5,7 @@ export const createBooking = async (
     roomId: number,
     checkIn: string,
     checkOut: string,
-    specialRequests?: string, // Додаємо поле, яке було в схемі
+    specialRequests?: string,
 ) => {
     const start = new Date(checkIn);
     const end = new Date(checkOut);

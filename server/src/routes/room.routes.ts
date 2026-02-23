@@ -19,7 +19,7 @@ router.get('/', RoomController.getRooms);
 router.get('/meta/bed-types', RoomController.getBedTypes);
 router.get('/meta/amenities', RoomController.getAmenities);
 router.get('/types/all', RoomController.getAllRoomTypes);
-router.get('/:id', RoomController.getRoom);
+router.get('/types/:id', RoomController.getRoomType);
 
 // --- АДМІН-МАРШРУТИ ---
 

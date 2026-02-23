@@ -39,20 +39,6 @@ export const getRooms = async (req: Request, res: Response) => {
     }
 };
 
-export const getRoom = async (req: Request, res: Response) => {
-    try {
-        const id = parseId(req.params.id);
-        if (isNaN(id)) return res.status(400).json({ message: 'Невалідний ID' });
-
-        const room = await RoomService.getRoomById(id);
-        if (!room) return res.status(404).json({ message: 'Кімнату не знайдено' });
-
-        res.json(room);
-    } catch (error) {
-        res.status(500).json({ message: 'Помилка при отриманні даних кімнати' });
-    }
-};
-
 // --- ДОВІДНКИ (Ліжкка та зручності) ---
 
 export const getBedTypes = async (req: Request, res: Response) => {
@@ -141,6 +127,17 @@ export const getAllRoomTypes = async (req: Request, res: Response) => {
         res.json(types);
     } catch (error) {
         res.status(500).json({ message: 'Помилка отримання категорій' });
+    }
+};
+
+export const getRoomType = async (req: Request, res: Response) => {
+    try {
+        const id = parseId(req.params.id);
+        const type = await RoomService.getRoomTypeById(id);
+        if (!type) return res.status(404).json({ message: 'Категорію не знайдено' });
+        res.json(type);
+    } catch (error) {
+        res.status(500).json({ message: 'Помилка сервера' });
     }
 };
 

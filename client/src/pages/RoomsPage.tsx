@@ -12,33 +12,21 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-interface Room {
+interface RoomType {
     id: number;
-    roomNumber: string;
-    roomType: {
-        name: string;
-        basePrice: string;
-        description: string;
-        capacity: number;
-        bedType: {
-            name: string;
-        };
-        images: {
-            url: string;
-            isPrimary: boolean;
-        }[];
-        amenities: {
-            amenity: {
-                name: string;
-            };
-        }[];
-        averageRating?: number;
-        reviewCount?: number;
-    };
+    name: string;
+    description: string;
+    basePrice: string;
+    capacity: number;
+    bedType: { name: string };
+    images: { url: string; isPrimary: boolean }[];
+    amenities: { amenity: { name: string } }[];
+    averageRating: number;
+    reviewCount: number;
 }
 
 export const RoomsPage = () => {
-    const [rooms, setRooms] = useState<Room[]>([]);
+    const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [amenityOptions, setAmenityOptions] = useState<{ id: number; name: string }[]>([]);
@@ -50,16 +38,15 @@ export const RoomsPage = () => {
     const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
     useEffect(() => {
-        api.get('/rooms');
         const fetchAll = async () => {
             try {
-                const [roomsRes, amRes, btRes] = await Promise.all([
-                    api.get('/rooms'),
+                const [typesRes, amRes, btRes] = await Promise.all([
+                    api.get('/rooms/types/all'),
                     api.get('/rooms/meta/amenities'),
                     api.get('/rooms/meta/bed-types'),
                 ]);
 
-                setRooms(roomsRes.data);
+                setRoomTypes(typesRes.data);
                 setAmenityOptions(amRes.data);
                 setBedTypeOptions(btRes.data);
                 setLoading(false);
@@ -72,16 +59,16 @@ export const RoomsPage = () => {
     }, []);
 
     // ЛОГІКА ФІЛЬТРАЦІЇ
-    const filteredRooms = rooms.filter((room) => {
-        const matchesCapacity = room.roomType.capacity >= minCapacity;
+    const filteredRooms = roomTypes.filter((type) => {
+        const matchesCapacity = type.capacity >= minCapacity;
 
         const matchesBed =
-            selectedBedTypes.length === 0 || selectedBedTypes.includes(room.roomType.bedType.name);
+            selectedBedTypes.length === 0 || selectedBedTypes.includes(type.bedType.name);
 
         const matchesAmenities =
             selectedAmenities.length === 0 ||
             selectedAmenities.every((sAm) =>
-                room.roomType.amenities.some((rAm) => rAm.amenity.name === sAm),
+                type.amenities.some((rAm) => rAm.amenity.name === sAm),
             );
 
         return matchesCapacity && matchesBed && matchesAmenities;
@@ -91,12 +78,12 @@ export const RoomsPage = () => {
     const sortedRooms = [...filteredRooms].sort((a, b) => {
         switch (sortBy) {
             case 'price-asc':
-                return Number(a.roomType.basePrice) - Number(b.roomType.basePrice);
+                return Number(a.basePrice) - Number(b.basePrice);
             case 'price-desc':
-                return Number(b.roomType.basePrice) - Number(a.roomType.basePrice);
+                return Number(b.basePrice) - Number(a.basePrice);
             case 'rating':
             default:
-                return (b.roomType.averageRating || 0) - (a.roomType.averageRating || 0);
+                return (b.averageRating || 0) - (a.averageRating || 0);
         }
     });
 
@@ -134,9 +121,9 @@ export const RoomsPage = () => {
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
                         >
-                            <option value="rating">★ Найвищий рейтинг</option>
-                            <option value="price-asc">↓ Ціна: від низької</option>
-                            <option value="price-desc">↑ Ціна: від високої</option>
+                            <option value="rating">Найвищий рейтинг</option>
+                            <option value="price-asc">Ціна: від низької</option>
+                            <option value="price-desc">Ціна: від високої</option>
                         </select>
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                             <ChevronDown size={16} />
@@ -237,10 +224,9 @@ export const RoomsPage = () => {
 
             {sortedRooms.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {sortedRooms.map((room) => {
+                    {sortedRooms.map((type) => {
                         const primaryImage =
-                            room.roomType.images.find((img) => img.isPrimary) ||
-                            room.roomType.images[0];
+                            type.images.find((img) => img.isPrimary) || type.images[0];
                         const imageUrl = primaryImage?.url
                             ? primaryImage.url.startsWith('http')
                                 ? primaryImage.url
@@ -248,23 +234,20 @@ export const RoomsPage = () => {
                             : 'https://www.ca.kayak.com/rimg/dimg/dynamic/186/2023/08/295ffd3a54bd51fc33810ce59382d1da.webp';
                         return (
                             <article
-                                key={room.id}
+                                key={type.id}
                                 className="flex flex-col h-full group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300"
                             >
                                 <div className="relative h-64 overflow-hidden">
                                     <img
                                         src={imageUrl}
-                                        alt={room.roomType.name}
+                                        alt={type.name}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     />
-                                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-bold text-primary shadow-sm">
-                                        №{room.roomNumber}
-                                    </div>
                                 </div>
 
                                 <div className="p-6 flex flex-col flex-grow">
                                     <h3 className="text-2xl font-bold text-slate-800 mb-2">
-                                        {room.roomType.name}
+                                        {type.name}
                                     </h3>
                                     <div className="flex items-center gap-2 mb-3">
                                         <div className="flex text-yellow-400">
@@ -273,8 +256,7 @@ export const RoomsPage = () => {
                                                     key={i}
                                                     size={16}
                                                     fill={
-                                                        i <
-                                                        Math.round(room.roomType.averageRating || 0)
+                                                        i < Math.round(type.averageRating || 0)
                                                             ? 'currentColor'
                                                             : 'none'
                                                     }
@@ -282,24 +264,24 @@ export const RoomsPage = () => {
                                             ))}
                                         </div>
                                         <span className="text-sm font-bold text-slate-700">
-                                            {room.roomType.averageRating?.toFixed(1) || '0.0'}
+                                            {type.averageRating?.toFixed(1) || '0.0'}
                                         </span>
                                         <span className="text-sm text-slate-400">
-                                            ({room.roomType.reviewCount || 0} відгуків)
+                                            ({type.reviewCount || 0} відгуків)
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-4 mb-4 text-slate-500 text-sm">
                                         <span className="flex items-center gap-1">
-                                            <Users size={18} /> {room.roomType.capacity} особи
+                                            <Users size={18} /> {type.capacity} особи
                                         </span>
                                         <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-md">
                                             <BedDouble size={16} className="text-primary" />{' '}
-                                            {room.roomType.bedType.name}
+                                            {type.bedType.name}
                                         </span>
                                     </div>
 
                                     <div className="flex flex-wrap gap-2 mb-6">
-                                        {room.roomType.amenities.slice(0, 3).map((item, index) => (
+                                        {type.amenities.slice(0, 3).map((item, index) => (
                                             <span
                                                 key={index}
                                                 className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-slate-400"
@@ -311,28 +293,28 @@ export const RoomsPage = () => {
                                                 {item.amenity.name}
                                             </span>
                                         ))}
-                                        {room.roomType.amenities.length > 3 && (
+                                        {type.amenities.length > 3 && (
                                             <span className="text-[10px] font-bold text-slate-400">
-                                                +{room.roomType.amenities.length - 3} більше
+                                                +{type.amenities.length - 3} більше
                                             </span>
                                         )}
                                     </div>
 
                                     <p className="text-slate-600 line-clamp-2 mb-6 text-sm leading-relaxed">
-                                        {room.roomType.description}
+                                        {type.description}
                                     </p>
 
                                     <div className="flex items-center justify-between pt-6 border-t border-slate-100 mt-auto">
                                         <div>
                                             <span className="block text-2xl font-black text-primary">
-                                                {room.roomType.basePrice} ₴
+                                                {type.basePrice} ₴
                                             </span>
                                             <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
                                                 за ніч
                                             </span>
                                         </div>
                                         <Link
-                                            to={`/rooms/${room.id}`}
+                                            to={`/room-types/${type.id}`}
                                             className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
                                         >
                                             Детальніше

@@ -38,24 +38,25 @@ interface Review {
     };
 }
 
-interface Room {
+interface PhysicalRoom {
     id: number;
     roomNumber: string;
-    roomType: {
-        name: string;
-        basePrice: string;
-        description: string;
-        capacity: number;
-        bedType: {
-            name: string;
-        };
-        images: {
-            url: string;
-            isPrimary: boolean;
-        }[];
-        amenities: { amenity: { name: string } }[];
-    };
+    status: string;
+}
+
+interface RoomType {
+    id: number;
+    name: string;
+    description: string;
+    basePrice: string;
+    capacity: number;
+    bedType: { name: string };
+    images: { url: string; isPrimary: boolean }[];
+    amenities: { amenity: { name: string } }[];
+    rooms: PhysicalRoom[];
     reviews?: Review[];
+    averageRating?: number;
+    reviewCount?: number;
 }
 
 interface ApiBooking {
@@ -73,7 +74,7 @@ export const RoomDetailsPage = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const location = useLocation();
-    const [room, setRoom] = useState<Room | null>(null);
+    const [roomType, setRoomType] = useState<RoomType | null>(null);
     const [takenDates, setTakenDates] = useState<UnifiedDate[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -83,6 +84,7 @@ export const RoomDetailsPage = () => {
     const [activeImgIndex, setActiveImgIndex] = useState(0);
 
     const [bookingData, setBookingData] = useState({
+        roomId: '',
         checkIn: '',
         checkOut: '',
         specialRequests: '',
@@ -95,68 +97,67 @@ export const RoomDetailsPage = () => {
     let nights = 0;
     let totalPrice = 0;
 
-    if (startDate && endDate && endDate > startDate && room) {
+    if (startDate && endDate && endDate > startDate && roomType) {
         nights = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        totalPrice = nights * Number(room.roomType.basePrice);
+        totalPrice = nights * Number(roomType.basePrice);
     }
 
     // Завантаження даних
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchRoomType = async () => {
             try {
-                const [roomRes, datesRes] = await Promise.all([
-                    api.get(`/rooms/${id}`),
-                    api.get(`/bookings/room/${id}/taken-dates`),
-                ]);
-
-                const roomData: Room = roomRes.data;
-
-                if (roomData.roomType.images) {
-                    roomData.roomType.images.sort(
-                        (a, b) => Number(b.isPrimary) - Number(a.isPrimary),
-                    );
+                const res = await api.get(`/rooms/types/${id}`);
+                const data: RoomType = res.data;
+                if (data.images) {
+                    data.images.sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
                 }
-                setRoom(roomData);
+                setRoomType(data);
                 setActiveImgIndex(0);
-
-                // Перетворюємо різні формати бази в один формат для фронтенду
-                const formattedBookings: UnifiedDate[] = datesRes.data.bookings.map(
-                    (b: ApiBooking) => ({
-                        start: new Date(b.checkInDate),
-                        end: new Date(b.checkOutDate),
-                        type: 'booking',
-                    }),
-                );
-
-                const formattedMaintenance: UnifiedDate[] = datesRes.data.maintenance.map(
-                    (m: ApiMaintenance) => ({
-                        start: new Date(m.startDate),
-                        end: new Date(m.endDate || Date.now() + 31536000000), // якщо endDate null, ставимо +1 рік
-                        type: 'maintenance',
-                    }),
-                );
-
-                setTakenDates([...formattedBookings, ...formattedMaintenance]);
-            } catch (err: unknown) {
-                console.error('Помилка завантаження', err);
+            } catch (err) {
+                console.error('Помилка завантаження категорії', err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchData();
+        fetchRoomType();
     }, [id]);
+
+    // Завантаження зайнятих дат, коли користувач обирає конкретну кімнату
+    useEffect(() => {
+        if (!bookingData.roomId) {
+            return;
+        }
+
+        const fetchDates = async () => {
+            try {
+                const res = await api.get(`/bookings/room/${bookingData.roomId}/taken-dates`);
+                const formattedBookings = res.data.bookings.map((b: ApiBooking) => ({
+                    start: new Date(b.checkInDate),
+                    end: new Date(b.checkOutDate),
+                    type: 'booking',
+                }));
+                const formattedMaintenance = res.data.maintenance.map((m: ApiMaintenance) => ({
+                    start: new Date(m.startDate),
+                    end: new Date(m.endDate || Date.now() + 31536000000), // якщо endDate null, ставимо +1 рік
+                    type: 'maintenance',
+                }));
+                setTakenDates([...formattedBookings, ...formattedMaintenance]);
+            } catch (err) {
+                console.error('Помилка завантаження дат', err);
+            }
+        };
+        fetchDates();
+    }, [bookingData.roomId]);
 
     // Функції для гортання слайдера
     const nextImage = () => {
-        if (!room) return;
-        setActiveImgIndex((prev) => (prev + 1) % room.roomType.images.length);
+        if (!roomType) return;
+        setActiveImgIndex((prev) => (prev + 1) % roomType.images.length);
     };
 
     const prevImage = () => {
-        if (!room) return;
-        setActiveImgIndex(
-            (prev) => (prev - 1 + room.roomType.images.length) % room.roomType.images.length,
-        );
+        if (!roomType) return;
+        setActiveImgIndex((prev) => (prev - 1 + roomType.images.length) % roomType.images.length);
     };
 
     const handleBookingAndPayment = async (e: React.FormEvent) => {
@@ -175,7 +176,7 @@ export const RoomDetailsPage = () => {
             setError('');
             // Бронювання
             const bookingRes = await api.post('/bookings', {
-                roomId: Number(id),
+                roomId: Number(bookingData.roomId),
                 checkIn: bookingData.checkIn,
                 checkOut: bookingData.checkOut,
                 specialRequests: bookingData.specialRequests,
@@ -232,9 +233,9 @@ export const RoomDetailsPage = () => {
                 Завантаження деталей номера...
             </div>
         );
-    if (!room) return <div className="p-20 text-center">Номер не знайдено</div>;
+    if (!roomType) return <div className="p-20 text-center">Номер не знайдено</div>;
 
-    const currentImageUrl = formatImageUrl(room.roomType.images[activeImgIndex]?.url);
+    const currentImageUrl = formatImageUrl(roomType.images[activeImgIndex]?.url);
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -253,11 +254,11 @@ export const RoomDetailsPage = () => {
                         <img
                             src={currentImageUrl}
                             className="w-full h-full object-cover transition-all duration-500"
-                            alt={room.roomType.name}
+                            alt={roomType.name}
                         />
 
                         {/* Стрілки (показуються при наведенні) */}
-                        {room.roomType.images.length > 1 && (
+                        {roomType.images.length > 1 && (
                             <>
                                 <button
                                     onClick={prevImage}
@@ -274,16 +275,16 @@ export const RoomDetailsPage = () => {
 
                                 {/* Індикатор кількості */}
                                 <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">
-                                    {activeImgIndex + 1} / {room.roomType.images.length}
+                                    {activeImgIndex + 1} / {roomType.images.length}
                                 </div>
                             </>
                         )}
                     </div>
 
                     {/* МІНІАТЮРИ ГАЛЕРЕЇ */}
-                    {room.roomType.images.length > 1 && (
+                    {roomType.images.length > 1 && (
                         <div className="flex gap-3 mb-8 overflow-x-auto pb-2 scrollbar-hide">
-                            {room.roomType.images.map((img, idx) => (
+                            {roomType.images.map((img, idx) => (
                                 <button
                                     key={idx}
                                     onClick={() => setActiveImgIndex(idx)}
@@ -303,28 +304,24 @@ export const RoomDetailsPage = () => {
                         </div>
                     )}
 
-                    <h1 className="text-4xl font-black text-slate-900 mb-4">
-                        {room.roomType.name}
-                    </h1>
+                    <h1 className="text-4xl font-black text-slate-900 mb-4">{roomType.name}</h1>
 
                     <div className="flex gap-6 mb-8 py-4 border-y border-slate-100 font-bold text-slate-600">
                         <span className="flex items-center gap-2">
-                            <Users className="text-primary" size={24} /> {room.roomType.capacity}{' '}
-                            особи
+                            <Users className="text-primary" size={24} /> {roomType.capacity} особи
                         </span>
                         <span className="flex items-center gap-2">
-                            <BedDouble className="text-primary" size={24} />{' '}
-                            {room.roomType.bedType.name}
+                            <BedDouble className="text-primary" size={24} /> {roomType.bedType.name}
                         </span>
                     </div>
 
                     <p className="text-slate-600 text-lg leading-relaxed mb-12">
-                        {room.roomType.description}
+                        {roomType.description}
                     </p>
 
                     <h3 className="text-2xl font-bold mb-6">Зручності номера</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-12">
-                        {room.roomType.amenities.map((item, idx) => (
+                        {roomType.amenities.map((item, idx) => (
                             <div
                                 key={idx}
                                 className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm"
@@ -340,13 +337,13 @@ export const RoomDetailsPage = () => {
                         <h3 className="text-2xl font-bold mb-8 flex items-center gap-3">
                             Відгуки гостей
                             <span className="text-sm font-normal text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
-                                {room.reviews?.length || 0}
+                                {roomType.reviews?.length || 0}
                             </span>
                         </h3>
 
-                        {room.reviews && room.reviews.length > 0 ? (
+                        {roomType.reviews && roomType.reviews.length > 0 ? (
                             <div className="space-y-6">
-                                {room.reviews.map((review) => (
+                                {roomType.reviews.map((review) => (
                                     <div
                                         key={review.id}
                                         className="bg-slate-50 p-6 rounded-3xl border border-slate-100"
@@ -393,7 +390,7 @@ export const RoomDetailsPage = () => {
                     <div className="sticky top-28 bg-white p-8 rounded-3xl shadow-2xl border border-slate-100">
                         <div className="mb-6 flex items-baseline gap-1">
                             <span className="text-3xl font-black text-primary">
-                                {room.roomType.basePrice} ₴
+                                {roomType.basePrice} ₴
                             </span>
                             <span className="text-slate-400 font-bold">/ ніч</span>
                         </div>
@@ -430,6 +427,36 @@ export const RoomDetailsPage = () => {
                                     </div>
                                 )}
 
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-1">
+                                        Оберіть конкретний номер
+                                    </label>
+                                    <select
+                                        required
+                                        className="w-full p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-primary font-bold text-sm mt-1"
+                                        value={bookingData.roomId}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setBookingData({ ...bookingData, roomId: val });
+                                            if (!val) setTakenDates([]);
+                                        }}
+                                    >
+                                        <option value="">Оберіть № кімнати...</option>
+                                        {roomType.rooms.map((r) => (
+                                            <option
+                                                key={r.id}
+                                                value={r.id}
+                                                disabled={r.status !== 'AVAILABLE'}
+                                            >
+                                                №{r.roomNumber}{' '}
+                                                {r.status !== 'AVAILABLE'
+                                                    ? '(На обслуговуванні)'
+                                                    : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
                                 <div className="grid grid-cols-1 gap-4">
                                     <div>
                                         <label className="text-[10px] font-black uppercase text-slate-400 ml-1">
@@ -442,6 +469,7 @@ export const RoomDetailsPage = () => {
                                                     size={18}
                                                 />
                                                 <DatePicker
+                                                    disabled={!bookingData.roomId}
                                                     selectsRange={true}
                                                     startDate={startDate}
                                                     endDate={endDate}
@@ -544,7 +572,7 @@ export const RoomDetailsPage = () => {
                                     <div className="p-4 bg-slate-900 rounded-2xl text-white">
                                         <div className="flex justify-between text-xs opacity-60 mb-1">
                                             <span>
-                                                {nights} ночей x {room.roomType.basePrice} ₴
+                                                {nights} ночей x {roomType.basePrice} ₴
                                             </span>
                                         </div>
                                         <div className="flex justify-between font-bold text-lg">
