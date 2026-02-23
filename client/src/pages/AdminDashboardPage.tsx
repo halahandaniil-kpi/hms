@@ -154,6 +154,13 @@ export const AdminDashboardPage = () => {
         fetchAllBookings();
     }, [adminForm.roomId, isModalOpen]);
 
+    const toLocalISOString = (date: Date | null) => {
+        if (!date) return '';
+        const offset = date.getTimezoneOffset();
+        const localDate = new Date(date.getTime() - offset * 60 * 1000);
+        return localDate.toISOString().split('T')[0];
+    };
+
     const handleRefund = async (paymentId: number) => {
         if (!window.confirm('Ви впевнені, що хочете оформити повернення коштів?')) return;
 
@@ -786,12 +793,8 @@ export const AdminDashboardPage = () => {
                                             const [start, end] = update;
                                             setAdminForm({
                                                 ...adminForm,
-                                                checkIn: start
-                                                    ? start.toISOString().split('T')[0]
-                                                    : '',
-                                                checkOut: end
-                                                    ? end.toISOString().split('T')[0]
-                                                    : '',
+                                                checkIn: toLocalISOString(start),
+                                                checkOut: toLocalISOString(end),
                                             });
                                         }}
                                         minDate={new Date()}
