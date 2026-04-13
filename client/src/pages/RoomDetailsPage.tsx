@@ -190,16 +190,46 @@ export const RoomDetailsPage = () => {
             });
 
             // Оплата
+            const bookingId = bookingRes.data.id;
             await api.post('/payments/pay', {
-                bookingId: bookingRes.data.id,
+                bookingId: bookingId,
                 paymentMethod: bookingData.paymentMethod,
-                transactionId:
-                    bookingData.paymentMethod === 'CARD' ? `SIM_TXN_${Date.now()}` : undefined,
             });
+            if (bookingData.paymentMethod === 'CARD') {
+                // Отримуємо параметри LiqPay для редіректу
+                const liqpayRes = await api.post('/payments/liqpay-params', { bookingId });
+                const { data, signature } = liqpayRes.data;
 
-            setSuccess(true);
-            setSuccessType(bookingData.paymentMethod as 'CARD' | 'CASH');
-            setTimeout(() => navigate('/'), 3000);
+                // Створюємо динамічну форму для редіректу на LiqPay
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'https://www.liqpay.ua/api/3/checkout';
+                form.acceptCharset = 'utf-8';
+
+                // Поле Data
+                const dataInput = document.createElement('input');
+                dataInput.type = 'hidden';
+                dataInput.name = 'data';
+                dataInput.value = data;
+                form.appendChild(dataInput);
+
+                // Поле Signature
+                const sigInput = document.createElement('input');
+                sigInput.type = 'hidden';
+                sigInput.name = 'signature';
+                sigInput.value = signature;
+                form.appendChild(sigInput);
+
+                // Додаємо форму на сторінку та автоматично відправляємо
+                document.body.appendChild(form);
+                form.submit();
+                // Браузер перейде на сайт LiqPay. Після оплати LiqPay поверне юзера на /bookings/my
+            } else {
+                // Якщо обрано оплату при заселенні
+                setSuccess(true);
+                setSuccessType('CASH');
+                setTimeout(() => navigate('/bookings/my'), 3000);
+            }
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
                 setError(err.response?.data?.message || 'Помилка при бронюванні');

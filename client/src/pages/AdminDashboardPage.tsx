@@ -274,8 +274,12 @@ export const AdminDashboardPage = () => {
     const handleAdminBooking = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!adminForm.checkIn || !adminForm.checkOut) return alert('Оберіть дати!');
+        if (!adminForm.roomId) return alert('Оберіть номер кімнати!');
+        if (!isNewGuest && !adminForm.targetUserId)
+            return alert('Оберіть існуючого гостя або створіть нового!');
 
         try {
+            // Бронювання
             const payload = {
                 roomId: adminForm.roomId,
                 checkIn: adminForm.checkIn,
@@ -285,26 +289,45 @@ export const AdminDashboardPage = () => {
                 targetUserId: isNewGuest ? null : adminForm.targetUserId,
                 newGuest: isNewGuest ? newGuestData : null,
             };
-
             const res = await api.post('/bookings/admin-create', payload);
 
+            // Оплата
+            const bookingId = res.data.id;
             await api.post('/payments/pay', {
                 bookingId: res.data.id,
                 paymentMethod: adminForm.paymentMethod,
-                transactionId:
-                    adminForm.paymentMethod === 'CARD' ? `ADMIN_CARD_${Date.now()}` : undefined,
             });
+            if (adminForm.paymentMethod === 'CARD') {
+                // Отримуємо параметри LiqPay для редіректу
+                const liqpayRes = await api.post('/payments/liqpay-params', { bookingId });
+                const { data, signature } = liqpayRes.data;
 
-            const isPaidNow = adminForm.paymentMethod === 'CARD';
+                // Створюємо динамічну форму для переходу на LiqPay
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'https://www.liqpay.ua/api/3/checkout';
+                form.acceptCharset = 'utf-8';
 
-            alert(
-                isPaidNow
-                    ? 'Бронювання та оплату успішно оформлено!'
-                    : 'Бронювання успішно оформлено!',
-            );
+                const dataInput = document.createElement('input');
+                dataInput.type = 'hidden';
+                dataInput.name = 'data';
+                dataInput.value = data;
+                form.appendChild(dataInput);
 
-            resetAdminModal();
-            fetchAllBookings();
+                const sigInput = document.createElement('input');
+                sigInput.type = 'hidden';
+                sigInput.name = 'signature';
+                sigInput.value = signature;
+                form.appendChild(sigInput);
+
+                document.body.appendChild(form);
+                form.submit();
+            } else {
+                // Якщо обрано оплату при заселенні
+                alert('Бронювання успішно оформлено! Гість оплатить заїзд на ресепшині.');
+                resetAdminModal();
+                fetchAllBookings();
+            }
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
                 alert(err.response?.data?.message || 'Помилка при створенні');

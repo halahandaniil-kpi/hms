@@ -13,17 +13,30 @@ export const processPayment = async (
     if (!booking) throw new Error('Бронювання не знайдено');
     if (booking.status === 'CANCELLED') throw new Error('Неможливо оплатити скасоване бронювання');
 
-    const isOnline = paymentMethod !== 'CASH';
-    // Онлайн оплата одразу COMPLETED, готівка - PENDING
-    const initialStatus = isOnline ? 'COMPLETED' : 'PENDING';
-
     return await prisma.payment.create({
         data: {
             bookingId: booking.id,
             amount: booking.totalPrice,
             paymentMethod: paymentMethod,
-            status: initialStatus,
-            transactionId: (isOnline ? transactionId : `CASH_${Date.now()}`) ?? null,
+            status: 'PENDING',
+            // Для картки transactionId прийде пізніше від LiqPay, тому поки null або тимчасовий
+            transactionId:
+                transactionId ?? (paymentMethod === 'CASH' ? `CASH_${Date.now()}` : null),
+        },
+    });
+};
+
+// Оновлення статусу після відповіді LiqPay
+export const updatePaymentStatus = async (
+    bookingId: number,
+    status: 'COMPLETED' | 'FAILED',
+    transactionId: string,
+) => {
+    return await prisma.payment.update({
+        where: { bookingId: bookingId },
+        data: {
+            status: status,
+            transactionId: transactionId,
         },
     });
 };
@@ -41,13 +54,5 @@ export const refundPayment = async (paymentId: number) => {
     return await prisma.payment.update({
         where: { id: paymentId },
         data: { status: 'REFUNDED' },
-    });
-};
-
-// Позначити оплату як невдалу
-export const markAsFailed = async (paymentId: number) => {
-    return await prisma.payment.update({
-        where: { id: paymentId },
-        data: { status: 'FAILED' },
     });
 };
