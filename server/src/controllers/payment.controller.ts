@@ -1,7 +1,7 @@
 import { Response, Request } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import * as PaymentService from '../services/payment.service.js';
-import { generateLiqPayData, verifyLiqPaySignature } from '../lib/liqpay.js';
+import { generateLiqPayData, verifyLiqPaySignature, makeLiqPayRequest } from '../lib/liqpay.js';
 import prisma from '../lib/prisma.js';
 
 export const pay = async (req: AuthRequest, res: Response) => {
@@ -44,10 +44,48 @@ export const confirmCash = async (req: AuthRequest, res: Response) => {
 export const refund = async (req: AuthRequest, res: Response) => {
     try {
         const { paymentId } = req.params;
-        const payment = await PaymentService.refundPayment(Number(paymentId));
-        res.json(payment);
+
+        const payment = await prisma.payment.findUnique({
+            where: { id: Number(paymentId) },
+        });
+
+        if (!payment) return res.status(404).json({ message: 'Платіж не знайдено' });
+        if (payment.status !== 'COMPLETED')
+            return res.status(400).json({ message: 'Можна повернути тільки успішну оплату' });
+
+        // Для готівки просто міняємо статус у базі, LiqPay не потрібен
+        if (payment.paymentMethod === 'CASH') {
+            await PaymentService.refundPayment(Number(paymentId));
+            return res.json({ message: 'Статус готівкового платежу змінено на Повернено' });
+        }
+
+        // Формуємо запит на повернення до LiqPay
+        const refundParams = {
+            public_key: process.env.LIQPAY_PUBLIC_KEY,
+            version: '3',
+            action: 'refund',
+            amount: payment.amount.toString(),
+            payment_id: payment.transactionId,
+        };
+
+        const liqpayResponse = await makeLiqPayRequest(refundParams);
+
+        // Для sandbox
+        // liqpayResponse.err_description === 'Невірний статус платежу'
+        if (
+            liqpayResponse.status === 'success' ||
+            liqpayResponse.err_description === 'Невірний статус платежу'
+        ) {
+            await PaymentService.refundPayment(Number(paymentId));
+            res.json({ message: 'Кошти успішно повернуті через LiqPay', details: liqpayResponse });
+        } else {
+            res.status(400).json({
+                message: 'LiqPay відхилив запит на повернення',
+                reason: liqpayResponse.err_description,
+            });
+        }
     } catch (error: any) {
-        res.status(400).json({ message: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 

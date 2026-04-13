@@ -51,8 +51,19 @@ export const confirmCashPayment = async (paymentId: number) => {
 
 // Оформити повернення коштів
 export const refundPayment = async (paymentId: number) => {
-    return await prisma.payment.update({
-        where: { id: paymentId },
-        data: { status: 'REFUNDED' },
+    return await prisma.$transaction(async (tx) => {
+        // Оновлюємо статус оплати
+        const updatedPayment = await tx.payment.update({
+            where: { id: paymentId },
+            data: { status: 'REFUNDED' },
+        });
+
+        // Скасовуємо саму бронь (щоб звільнити номер)
+        await tx.booking.update({
+            where: { id: updatedPayment.bookingId },
+            data: { status: 'CANCELLED' },
+        });
+
+        return updatedPayment;
     });
 };
