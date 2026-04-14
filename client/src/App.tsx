@@ -152,12 +152,20 @@ const Navbar = () => {
                                 </button>
                             </>
                         ) : (
-                            <Link
-                                to="/login"
-                                className="bg-slate-900 text-white px-6 py-2 rounded-full hover:bg-slate-800 transition-all font-bold text-sm"
-                            >
-                                Увійти
-                            </Link>
+                            <div className="flex items-center gap-4">
+                                <Link
+                                    to="/login"
+                                    className="text-slate-600 hover:text-primary font-bold text-xs uppercase tracking-widest transition-colors"
+                                >
+                                    Увійти
+                                </Link>
+                                <Link
+                                    to="/register"
+                                    className="bg-slate-900 text-white px-6 py-2.5 rounded-full hover:bg-slate-800 transition-all font-bold text-xs uppercase tracking-widest shadow-lg shadow-slate-200"
+                                >
+                                    Реєстрація
+                                </Link>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -237,12 +245,22 @@ const Navbar = () => {
                                 </button>
                             </div>
                         ) : (
-                            <Link
-                                to="/login"
-                                className="block w-full py-4 bg-primary text-white text-center rounded-2xl font-black uppercase tracking-widest"
-                            >
-                                Увійти в систему
-                            </Link>
+                            <div className="flex flex-col gap-3">
+                                <Link
+                                    to="/login"
+                                    onClick={closeMenu}
+                                    className="block w-full py-5 bg-slate-100 text-slate-900 text-center rounded-2xl font-black uppercase tracking-widest text-sm border border-slate-200"
+                                >
+                                    Увійти
+                                </Link>
+                                <Link
+                                    to="/register"
+                                    onClick={closeMenu}
+                                    className="block w-full py-5 bg-slate-900 text-white text-center rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl"
+                                >
+                                    Зареєструватися
+                                </Link>
+                            </div>
                         )}
                     </div>
                 </div>
