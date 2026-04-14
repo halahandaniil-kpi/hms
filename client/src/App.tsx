@@ -11,6 +11,8 @@ import { ProfilePage } from './pages/ProfilePage';
 import { MaintenancePage } from './pages/MaintenancePage';
 import { useState, useEffect, type ReactNode } from 'react';
 import { Menu, X, ShieldAlert, Home } from 'lucide-react';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 
 // Компонент для відображення помилки доступу
 const AccessDenied = () => (
@@ -280,6 +282,8 @@ function App() {
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/room-types/:id" element={<RoomDetailsPage />} />
+                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                         {/* ЗАХИЩЕНІ РОУТИ ДЛЯ ГОСТЯ */}
                         <Route

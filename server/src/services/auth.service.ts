@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
+import { sendResetEmail } from '../lib/mailer.js';
 
 export const register = async (
     email: string,
@@ -116,4 +117,34 @@ export const refresh = async (token: string) => {
     );
 
     return accessToken;
+};
+
+// Запит на скидання
+export const requestPasswordReset = async (email: string) => {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return; // Для безпеки не кажемо, чи є такий email
+
+    // Генеруємо токен на 15 хв, зашивши туди ID юзера
+    const resetToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, { expiresIn: '15m' });
+
+    const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+    await sendResetEmail(email, resetLink);
+};
+
+// Зміна пароля
+export const resetPassword = async (token: string, newPassword: string) => {
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: number };
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await prisma.user.update({
+            where: { id: decoded.userId },
+            data: { passwordHash: hashedPassword },
+        });
+
+        // Після зміни пароля видаляємо всі Refresh токени юзера для безпеки
+        await prisma.refreshToken.deleteMany({ where: { userId: decoded.userId } });
+    } catch {
+        throw new Error('Посилання недійсне або термін його дії закінчився');
+    }
 };

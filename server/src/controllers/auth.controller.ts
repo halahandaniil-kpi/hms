@@ -48,3 +48,23 @@ export const getMe = async (req: any, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const forgotPassword = async (req: Request, res: Response) => {
+    try {
+        const { email } = req.body;
+        await AuthService.requestPasswordReset(email);
+        res.json({ message: 'Якщо цей email зареєстрований, ви отримаєте лист із інструкціями' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+    try {
+        const { token, newPassword } = req.body;
+        await AuthService.resetPassword(token, newPassword);
+        res.json({ message: 'Пароль успішно змінено' });
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};

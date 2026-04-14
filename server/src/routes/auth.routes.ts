@@ -14,5 +14,7 @@ router.get('/guests', authenticate, authorize(['ADMIN', 'RECEPTIONIST']), UserCo
 router.get('/staff', authenticate, authorize(['ADMIN']), UserController.getReceptionists);
 router.post('/staff', authenticate, authorize(['ADMIN']), UserController.addReceptionist);
 router.delete('/staff/:id', authenticate, authorize(['ADMIN']), UserController.removeUser);
+router.post('/forgot-password', AuthController.forgotPassword);
+router.post('/reset-password', AuthController.resetPassword);
 
 export default router;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import axios from 'axios';
@@ -86,6 +86,14 @@ export const LoginPage = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
+                        </div>
+                        <div className="flex justify-end mt-1">
+                            <Link
+                                to="/forgot-password"
+                                className="text-[11px] font-bold text-primary hover:underline uppercase tracking-tighter"
+                            >
+                                Забули пароль?
+                            </Link>
                         </div>
                     </div>
 
