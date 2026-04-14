@@ -71,3 +71,19 @@ export const removeUser = async (req: Request, res: Response) => {
         res.status(400).json({ message: 'Неможливо видалити користувача (є пов’язані записи)' });
     }
 };
+
+export const changePassword = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user!.userId;
+        const { oldPassword, newPassword } = req.body;
+
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({ message: 'Заповніть усі поля' });
+        }
+
+        await UserService.changeUserPassword(userId, oldPassword, newPassword);
+        res.json({ message: 'Пароль успішно змінено' });
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};

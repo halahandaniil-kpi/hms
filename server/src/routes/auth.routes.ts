@@ -10,6 +10,7 @@ router.post('/login', AuthController.login);
 router.post('/refresh', AuthController.refresh);
 router.get('/me', authenticate, AuthController.getMe);
 router.patch('/update-me', authenticate, UserController.updateMe);
+router.patch('/change-password', authenticate, UserController.changePassword);
 router.get('/guests', authenticate, authorize(['ADMIN', 'RECEPTIONIST']), UserController.getGuests);
 router.get('/staff', authenticate, authorize(['ADMIN']), UserController.getReceptionists);
 router.post('/staff', authenticate, authorize(['ADMIN']), UserController.addReceptionist);

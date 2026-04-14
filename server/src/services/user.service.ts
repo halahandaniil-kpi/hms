@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma.js';
+import bcrypt from 'bcrypt';
 
 export const updateUserProfile = async (
     userId: number,
@@ -46,4 +47,22 @@ export const createStaff = async (data: {
 
 export const deleteUser = async (id: number) => {
     return await prisma.user.delete({ where: { id } });
+};
+
+export const changeUserPassword = async (userId: number, oldPass: string, newPass: string) => {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('Користувача не знайдено');
+
+    // Перевіряємо старий пароль
+    const isOldValid = await bcrypt.compare(oldPass, user.passwordHash);
+    if (!isOldValid) {
+        throw new Error('Поточний пароль вказано невірно');
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPass, 10);
+
+    return await prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash: hashedNewPassword },
+    });
 };
