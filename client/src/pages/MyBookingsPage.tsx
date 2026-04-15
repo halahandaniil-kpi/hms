@@ -142,6 +142,37 @@ export const MyBookingsPage = () => {
         );
     };
 
+    const handleOnlinePayment = async (bookingId: number) => {
+        try {
+            const res = await api.post('/payments/liqpay-params', { bookingId });
+            const { data, signature } = res.data;
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'https://www.liqpay.ua/api/3/checkout';
+            form.acceptCharset = 'utf-8';
+
+            const dataInput = document.createElement('input');
+            dataInput.type = 'hidden';
+            dataInput.name = 'data';
+            dataInput.value = data;
+            form.appendChild(dataInput);
+
+            const sigInput = document.createElement('input');
+            sigInput.type = 'hidden';
+            sigInput.name = 'signature';
+            sigInput.value = signature;
+            form.appendChild(sigInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                alert(err.response?.data?.message || 'Помилка ініціалізації оплати');
+            }
+        }
+    };
+
     if (loading)
         return (
             <div className="p-20 text-center animate-pulse font-bold text-primary">
@@ -216,34 +247,47 @@ export const MyBookingsPage = () => {
                                             getPaymentStatusBadge(booking.payment.status)}
                                     </div>
 
-                                    {/* ЛОГІКА ВІДГУКУ */}
-                                    {booking.status === 'CHECKED_OUT' && !booking.review && (
-                                        <button
-                                            onClick={() =>
-                                                setReviewForm({ ...reviewForm, id: booking.id })
-                                            }
-                                            className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all"
-                                        >
-                                            <MessageSquare size={16} /> Залишити відгук
-                                        </button>
-                                    )}
+                                    <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
+                                        {/* КНОПКА ОПЛАТИ ОНЛАЙН */}
+                                        {booking.status !== 'CANCELLED' &&
+                                            booking.payment?.status === 'PENDING' && (
+                                                <button
+                                                    onClick={() => handleOnlinePayment(booking.id)}
+                                                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                                                >
+                                                    <CreditCard size={16} /> Оплатити онлайн
+                                                </button>
+                                            )}
 
-                                    {booking.review && (
-                                        <div className="flex items-center gap-1 text-yellow-500 font-black">
-                                            <Star size={16} fill="currentColor" />{' '}
-                                            {booking.review.rating}/5
-                                        </div>
-                                    )}
+                                        {/* ЛОГІКА ВІДГУКУ */}
+                                        {booking.status === 'CHECKED_OUT' && !booking.review && (
+                                            <button
+                                                onClick={() =>
+                                                    setReviewForm({ ...reviewForm, id: booking.id })
+                                                }
+                                                className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all"
+                                            >
+                                                <MessageSquare size={16} /> Залишити відгук
+                                            </button>
+                                        )}
 
-                                    {/* СКАСУВАННЯ БРОНЮВАННЯ */}
-                                    {['PENDING', 'CONFIRMED'].includes(booking.status) && (
-                                        <button
-                                            onClick={() => handleCancel(booking.id)}
-                                            className="flex items-center gap-2 border border-red-200 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-50 transition-all"
-                                        >
-                                            <XCircle size={16} /> Скасувати
-                                        </button>
-                                    )}
+                                        {booking.review && (
+                                            <div className="flex items-center gap-1 text-yellow-500 font-black">
+                                                <Star size={16} fill="currentColor" />{' '}
+                                                {booking.review.rating}/5
+                                            </div>
+                                        )}
+
+                                        {/* СКАСУВАННЯ БРОНЮВАННЯ */}
+                                        {['PENDING', 'CONFIRMED'].includes(booking.status) && (
+                                            <button
+                                                onClick={() => handleCancel(booking.id)}
+                                                className="flex items-center gap-2 border border-red-200 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-50 transition-all"
+                                            >
+                                                <XCircle size={16} /> Скасувати
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* ПОВІДОМЛЕННЯ ПРО ПОВЕРНЕННЯ КОШТІВ */}

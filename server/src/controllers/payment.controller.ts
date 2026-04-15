@@ -94,10 +94,20 @@ export const getLiqPayParams = async (req: AuthRequest, res: Response) => {
         const { bookingId } = req.body;
         const booking = await prisma.booking.findUnique({
             where: { id: Number(bookingId) },
-            include: { room: { include: { roomType: true } } },
+            include: {
+                room: { include: { roomType: true } },
+                payment: true,
+            },
         });
 
         if (!booking) return res.status(404).json({ message: 'Бронювання не знайдено' });
+
+        if (booking.payment && booking.payment.paymentMethod !== 'CARD') {
+            await prisma.payment.update({
+                where: { id: booking.payment.id },
+                data: { paymentMethod: 'CARD' },
+            });
+        }
 
         const params = {
             public_key: process.env.LIQPAY_PUBLIC_KEY,
