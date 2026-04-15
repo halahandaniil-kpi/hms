@@ -2,11 +2,19 @@ import { Router } from 'express';
 import * as BookingController from '../controllers/booking.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import * as ReviewController from '../controllers/review.controller.js';
+import { BookingSchema, AdminBookingSchema } from '../lib/schemas.js';
+import { validate } from '../middlewares/validate.middleware.js';
 
 const router = Router();
 
 // Тільки залогінені користувачі можуть бронювати та бачити свої броні
-router.post('/', authenticate, authorize(['GUEST']), BookingController.create);
+router.post(
+    '/',
+    authenticate,
+    authorize(['GUEST']),
+    validate(BookingSchema),
+    BookingController.create,
+);
 router.get('/my', authenticate, BookingController.getMyBookings);
 router.post('/review', authenticate, ReviewController.addReview);
 router.get('/room/:id/taken-dates', BookingController.getTakenDates);
@@ -15,6 +23,7 @@ router.post(
     '/admin-create',
     authenticate,
     authorize(['ADMIN', 'RECEPTIONIST']),
+    validate(AdminBookingSchema),
     BookingController.adminCreate,
 );
 

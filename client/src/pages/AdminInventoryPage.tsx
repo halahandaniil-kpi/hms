@@ -279,6 +279,10 @@ export const AdminInventoryPage = () => {
 
     const handleAddStaff = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (staffForm.password.length < 6) return alert('Пароль має бути від 6 символів');
+        if (staffForm.fullName.length < 2) return alert("Ім'я занадто коротке");
+
         try {
             await api.post('/auth/staff', staffForm);
             setIsAddingStaff(false);

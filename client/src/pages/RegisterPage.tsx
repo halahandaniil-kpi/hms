@@ -20,6 +20,14 @@ export const RegisterPage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
+        if (formData.password.length < 6) {
+            return setError('Пароль має бути не менше 6 символів');
+        }
+        if (!/^\+?[0-9]{10,15}$/.test(formData.phone)) {
+            return setError('Введіть коректний номер телефону (напр. +380...)');
+        }
+
         setLoading(true);
 
         try {

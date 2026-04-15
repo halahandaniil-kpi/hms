@@ -45,6 +45,10 @@ export const ProfilePage = () => {
 
     const handleSubmitPassword = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (passData.newPassword.length < 6) {
+            setPassStatus({ type: 'error', msg: 'Новий пароль занадто короткий (мін. 6 симв.)' });
+            return;
+        }
         if (passData.newPassword !== passData.confirmPassword) {
             setPassStatus({ type: 'error', msg: 'Нові паролі не збігаються' });
             return;

@@ -275,6 +275,13 @@ export const AdminDashboardPage = () => {
 
     const handleAdminBooking = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (isNewGuest) {
+            if (newGuestData.fullName.length < 2) return alert('ПІБ занадто коротке');
+            if (!newGuestData.email.includes('@')) return alert('Некоректний email');
+        } else if (!adminForm.targetUserId) {
+            return alert('Оберіть існуючого гостя');
+        }
         if (!adminForm.checkIn || !adminForm.checkOut) return alert('Оберіть дати!');
         if (!adminForm.roomId) return alert('Оберіть номер кімнати!');
         if (!isNewGuest && !adminForm.targetUserId)

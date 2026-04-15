@@ -18,6 +18,11 @@ export const ResetPasswordPage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (password.length < 6)
+            return setStatus({ type: 'error', msg: 'Пароль має бути від 6 символів' });
+        if (password !== confirmPassword)
+            return setStatus({ type: 'error', msg: 'Пароли не збігаються' });
+
         if (password !== confirmPassword) {
             setStatus({ type: 'error', msg: 'Паролі не збігаються' });
             return;
