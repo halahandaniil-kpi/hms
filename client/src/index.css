@@ -6,14 +6,103 @@ body {
     @apply bg-slate-50 text-slate-900 antialiased;
 }
 
-/* Колір для вже заброньованих дат */
-.date-occupied {
-    @apply bg-yellow-400 text-white rounded-full !important;
+/* Повна заливка для днів посеред броні */
+.taken-full {
+    background-color: #f1f5f9 !important;
+    color: #94a3b8 !important;
 }
 
-/* Колір для дат на обслуговуванні */
-.date-maintenance {
-    @apply bg-red-500 text-white rounded-full !important;
+/* Половинка справа (день заїзду) */
+.taken-start {
+    background: linear-gradient(to right, white 50%, #f1f5f9 50%) !important;
+    color: #1e293b !important;
+}
+
+/* Половинка зліва (день виїзду) */
+.taken-end {
+    background: linear-gradient(to left, white 50%, #f1f5f9 50%) !important;
+    color: #1e293b !important;
+}
+
+/* Якщо день одночасно є днем виїзду одного і заїзду іншого */
+.taken-split {
+    background: #f1f5f9 !important;
+    color: #94a3b8 !important;
+    position: relative;
+}
+.taken-split::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 1px;
+    height: 100%;
+    background-color: white;
+}
+
+/* Повна заливка для днів всередині обраного діапазону */
+.react-datepicker__day--in-range:not(.react-datepicker__day--range-start):not(
+        .react-datepicker__day--range-end
+    ) {
+    background-color: #60a5fa !important;
+}
+
+/* Половинка заїзду користувача*/
+.react-datepicker__day--range-start {
+    background: linear-gradient(to right, white 50%, #60a5fa 50%) !important;
+    font-weight: 900 !important;
+}
+.taken-end.react-datepicker__day--range-start {
+    background: linear-gradient(to right, #f1f5f9 50%, #60a5fa 50%) !important;
+    font-weight: 900 !important;
+}
+
+/* Половинка виїзду користувача*/
+.react-datepicker__day--range-end {
+    background: linear-gradient(to right, #60a5fa 50%, white 50%) !important;
+    font-weight: 900 !important;
+    color: #1e293b !important;
+}
+.taken-start.react-datepicker__day--range-end {
+    background: linear-gradient(to right, #60a5fa 50%, #f1f5f9 50%) !important;
+    font-weight: 900 !important;
+}
+
+/* Вібир дат */
+.react-datepicker__day--in-selecting-range {
+    background-color: #60a5fa !important;
+}
+.react-datepicker__day--selecting-range-start {
+    background: linear-gradient(to right, white 50%, #60a5fa 50%) !important;
+    font-weight: 900 !important;
+}
+.taken-end.react-datepicker__day--in-selecting-range {
+    background: linear-gradient(to right, #f1f5f9 50%, #60a5fa 50%) !important;
+    font-weight: 900 !important;
+}
+.react-datepicker__day--selecting-range-end {
+    background: linear-gradient(to right, #60a5fa 50%, white 50%) !important;
+    font-weight: 900 !important;
+    color: #1e293b !important;
+}
+.taken-start.react-datepicker__day--in-selecting-range {
+    background: linear-gradient(to right, #60a5fa 50%, #f1f5f9 50%) !important;
+    font-weight: 900 !important;
+}
+
+/* Загальні виправлення для календаря */
+.react-datepicker-wrapper {
+    width: 100%;
+}
+.react-datepicker {
+    border-radius: 1.5rem !important;
+    border: 1px solid #e2e8f0 !important;
+    font-family: inherit !important;
+    overflow: hidden;
+}
+.react-datepicker__header {
+    background-color: white !important;
+    border-bottom: 1px solid #f1f5f9 !important;
 }
 
 /* Прибираємо стандартні іконки браузера */
@@ -22,8 +111,4 @@ input::-webkit-inner-spin-button,
 input::-webkit-clear-button {
     display: none !important;
     -webkit-appearance: none;
-}
-
-.react-datepicker-wrapper {
-    width: 100%;
 }

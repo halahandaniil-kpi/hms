@@ -40,12 +40,12 @@ interface Booking {
     payment?: { id: number; status: string };
 }
 
-interface ApiBookingDates {
+interface ApiBooking {
     checkInDate: string;
     checkOutDate: string;
 }
 
-interface ApiMaintenanceDates {
+interface ApiMaintenance {
     startDate: string;
     endDate: string | null;
 }
@@ -132,34 +132,36 @@ export const AdminDashboardPage = () => {
     };
 
     useEffect(() => {
-        if (adminForm.roomId && isModalOpen) {
-            api.get(`/bookings/room/${adminForm.roomId}/taken-dates`).then((res) => {
-                const formattedBookings: UnifiedDate[] = res.data.bookings.map(
-                    (b: ApiBookingDates) => ({
+        fetchAllBookings();
+    }, []);
+
+    useEffect(() => {
+        const fetchDates = async () => {
+            if (adminForm.roomId && isModalOpen) {
+                try {
+                    const res = await api.get(`/bookings/room/${adminForm.roomId}/taken-dates`);
+                    const formattedBookings = res.data.bookings.map((b: ApiBooking) => ({
                         start: new Date(b.checkInDate),
                         end: new Date(b.checkOutDate),
                         type: 'booking',
-                    }),
-                );
-                const formattedMaintenance: UnifiedDate[] = res.data.maintenance.map(
-                    (m: ApiMaintenanceDates) => ({
+                    }));
+                    const formattedMaintenance = res.data.maintenance.map((m: ApiMaintenance) => ({
                         start: new Date(m.startDate),
-                        end: new Date(m.endDate || Date.now() + 31536000000),
+                        end: new Date(m.endDate || Date.now() + 31536000000), // якщо endDate null, ставимо +1 рік
                         type: 'maintenance',
-                    }),
-                );
-                setAdminTakenDates([...formattedBookings, ...formattedMaintenance]);
-            });
-        }
-        fetchAllBookings();
+                    }));
+                    setAdminTakenDates([...formattedBookings, ...formattedMaintenance]);
+                } catch (err) {
+                    console.error('Помилка завантаження дат', err);
+                }
+            }
+        };
+        fetchDates();
+        const interval = setInterval(fetchDates, 30000);
+        return () => {
+            clearInterval(interval);
+        };
     }, [adminForm.roomId, isModalOpen]);
-
-    const toLocalISOString = (date: Date | null) => {
-        if (!date) return '';
-        const offset = date.getTimezoneOffset();
-        const localDate = new Date(date.getTime() - offset * 60 * 1000);
-        return localDate.toISOString().split('T')[0];
-    };
 
     const handleRefund = async (paymentId: number) => {
         if (!window.confirm('Ви впевнені, що хочете оформити повернення коштів?')) return;
@@ -278,6 +280,17 @@ export const AdminDashboardPage = () => {
         if (!isNewGuest && !adminForm.targetUserId)
             return alert('Оберіть існуючого гостя або створіть нового!');
 
+        const hasOverlap = adminTakenDates.some((period) => {
+            const pStart = new Date(period.start).getTime();
+            const pEnd = new Date(period.end).getTime();
+            const selStart = new Date(adminForm.checkIn).getTime();
+            const selEnd = new Date(adminForm.checkOut).getTime();
+            return selStart < pEnd && selEnd > pStart;
+        });
+        if (hasOverlap) {
+            return alert('Обраний період перетинається з існуючим бронюванням або ремонтом');
+        }
+
         try {
             // Бронювання
             const payload = {
@@ -335,22 +348,73 @@ export const AdminDashboardPage = () => {
         }
     };
 
+    const toLocalISOString = (date: Date | null) => {
+        if (!date) return '';
+        const offset = date.getTimezoneOffset();
+        const localDate = new Date(date.getTime() - offset * 60 * 1000);
+        return localDate.toISOString().split('T')[0];
+    };
+
     const getAdminDayClassName = (date: Date) => {
-        const checkDate = new Date(date);
-        checkDate.setHours(0, 0, 0, 0);
+        const dateStr = toLocalISOString(date);
+        let isStart = false;
+        let isEnd = false;
+        let isBetween = false;
 
-        for (const period of adminTakenDates) {
-            const start = new Date(period.start);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(period.end);
-            end.setHours(0, 0, 0, 0);
+        adminTakenDates.forEach((period) => {
+            const startStr = toLocalISOString(new Date(period.start));
+            const endStr = toLocalISOString(new Date(period.end));
 
-            if (checkDate >= start && checkDate <= end) {
-                return period.type === 'maintenance' ? 'date-maintenance' : 'date-occupied';
-            }
-        }
+            if (dateStr === startStr) isStart = true;
+            else if (dateStr === endStr) isEnd = true;
+            else if (dateStr > startStr && dateStr < endStr) isBetween = true;
+        });
+
+        if (isStart && isEnd) return 'taken-split';
+        if (isBetween) return 'taken-full';
+        if (isStart) return 'taken-start';
+        if (isEnd) return 'taken-end';
+
         return '';
     };
+
+    const getDisabledDates = () => {
+        const disabled = new Set<string>();
+
+        adminTakenDates.forEach((period) => {
+            const sStr = toLocalISOString(new Date(period.start));
+            const eStr = toLocalISOString(new Date(period.end));
+
+            // Блокуємо день, якщо він є заїздом і виїздом
+            if (adminTakenDates.some((other) => toLocalISOString(new Date(other.end)) === sStr)) {
+                disabled.add(sStr);
+            }
+            if (adminTakenDates.some((other) => toLocalISOString(new Date(other.start)) === eStr)) {
+                disabled.add(eStr);
+            }
+        });
+
+        return Array.from(disabled).map((dateStr) => new Date(dateStr));
+    };
+    const disabledDates = getDisabledDates();
+
+    const excludeIntervals = adminTakenDates
+        .map((period) => {
+            const start = toLocalISOString(new Date(period.start));
+            const end = toLocalISOString(new Date(period.end));
+
+            const blockedStart = new Date(start);
+            blockedStart.setDate(blockedStart.getDate());
+
+            const blockedEnd = new Date(end);
+            blockedEnd.setDate(blockedEnd.getDate() - 1);
+
+            // Якщо бронь лише на 1 ніч, блокувати всередині нічого
+            if (blockedStart > blockedEnd) return null;
+
+            return { start: blockedStart, end: blockedEnd };
+        })
+        .filter(Boolean) as { start: Date; end: Date }[];
 
     if (loading)
         return (
@@ -741,6 +805,7 @@ export const AdminDashboardPage = () => {
                                 </span>
                                 <select
                                     required
+                                    disabled={!(adminForm.targetUserId || newGuestData.email)}
                                     className="w-full mt-1 p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-primary font-bold text-sm"
                                     value={selectedCategoryId}
                                     onChange={(e) => {
@@ -748,7 +813,11 @@ export const AdminDashboardPage = () => {
                                         setAdminForm({ ...adminForm, roomId: '' }); // Скидаємо вибрану кімнату при зміні категорії
                                     }}
                                 >
-                                    <option value="">Оберіть категорію...</option>
+                                    <option value="">
+                                        {adminForm.targetUserId || newGuestData.email
+                                            ? 'Оберіть категорію...'
+                                            : 'Спочатку оберіть гостя'}
+                                    </option>
                                     {roomTypes.map((t) => (
                                         <option key={t.id} value={t.id}>
                                             {t.name} ({t.basePrice} ₴)
@@ -814,6 +883,42 @@ export const AdminDashboardPage = () => {
                                         }
                                         onChange={(update: [Date | null, Date | null]) => {
                                             const [start, end] = update;
+                                            if (start && end) {
+                                                const startStr = toLocalISOString(start);
+                                                const endStr = toLocalISOString(end);
+                                                if (startStr === endStr) {
+                                                    setAdminForm({
+                                                        ...adminForm,
+                                                        checkIn: '',
+                                                        checkOut: '',
+                                                    });
+                                                    return;
+                                                }
+                                                const isOverlapInside = adminTakenDates.some(
+                                                    (period) => {
+                                                        const pStart = toLocalISOString(
+                                                            new Date(period.start),
+                                                        );
+                                                        const pEnd = toLocalISOString(
+                                                            new Date(period.end),
+                                                        );
+                                                        return (
+                                                            (pStart > startStr &&
+                                                                pStart < endStr) ||
+                                                            (pEnd > startStr && pEnd < endStr)
+                                                        );
+                                                    },
+                                                );
+
+                                                if (isOverlapInside) {
+                                                    setAdminForm({
+                                                        ...adminForm,
+                                                        checkIn: '',
+                                                        checkOut: '',
+                                                    });
+                                                    return;
+                                                }
+                                            }
                                             setAdminForm({
                                                 ...adminForm,
                                                 checkIn: toLocalISOString(start),
@@ -822,6 +927,8 @@ export const AdminDashboardPage = () => {
                                         }}
                                         minDate={new Date()}
                                         dayClassName={getAdminDayClassName}
+                                        excludeDates={disabledDates}
+                                        excludeDateIntervals={excludeIntervals}
                                         locale="uk"
                                         disabled={!adminForm.roomId}
                                         placeholderText={
@@ -829,17 +936,19 @@ export const AdminDashboardPage = () => {
                                                 ? 'Оберіть дати...'
                                                 : 'Оберіть номер для перевірки дат'
                                         }
-                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-primary text-sm font-bold"
+                                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-primary text-sm font-bold ${!adminForm.roomId ? 'opacity-50' : ''}`}
                                     />
                                 </div>
                                 <div className="flex gap-4 mt-2 ml-1">
-                                    <div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400">
-                                        <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>{' '}
+                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-slate-400">
+                                        <div className="w-2.5 h-2.5 bg-slate-200 rounded-sm"></div>
                                         Зайнято
                                     </div>
-                                    <div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400">
-                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>{' '}
-                                        Обслуговування
+                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-slate-400">
+                                        <div className="w-2.5 h-2.5 bg-white border border-slate-200 rounded-sm flex overflow-hidden">
+                                            <div className="w-1/2 bg-slate-200"></div>
+                                        </div>
+                                        Заїзд / Виїзд
                                     </div>
                                 </div>
                             </div>

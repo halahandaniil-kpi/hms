@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import axios from 'axios';
 import { Plus, Trash2, Edit3, X, Calendar, User, Home, CheckCircle } from 'lucide-react';
@@ -63,44 +63,55 @@ export const MaintenancePage = () => {
     };
 
     useEffect(() => {
+        fetchData();
+    }, []);
+
+    useEffect(() => {
         const loadRoomDates = async () => {
-            if (!form.roomId || !isAdding) {
-                setTakenDates([]);
-                return;
-            }
-            try {
-                const res = await api.get(`/bookings/room/${form.roomId}/taken-dates`);
-                const formattedBookings: UnifiedDate[] = res.data.bookings.map((b: ApiBooking) => ({
-                    start: new Date(b.checkInDate),
-                    end: new Date(b.checkOutDate),
-                    type: 'booking',
-                }));
-                const formattedMaintenance: UnifiedDate[] = res.data.maintenance.map(
-                    (m: ApiMaintenance) => ({
-                        start: new Date(m.startDate),
-                        end: new Date(m.endDate || Date.now() + 31536000000),
-                        type: 'maintenance',
-                    }),
-                );
-                setTakenDates([...formattedBookings, ...formattedMaintenance]);
-            } catch (err) {
-                console.error('Помилка завантаження дат', err);
+            if (form.roomId) {
+                try {
+                    const res = await api.get(`/bookings/room/${form.roomId}/taken-dates`);
+                    const formattedBookings: UnifiedDate[] = res.data.bookings.map(
+                        (b: ApiBooking) => ({
+                            start: new Date(b.checkInDate),
+                            end: new Date(b.checkOutDate),
+                            type: 'booking',
+                        }),
+                    );
+                    const formattedMaintenance: UnifiedDate[] = res.data.maintenance.map(
+                        (m: ApiMaintenance) => ({
+                            start: new Date(m.startDate),
+                            end: new Date(m.endDate || Date.now() + 31536000000),
+                            type: 'maintenance',
+                        }),
+                    );
+                    setTakenDates([...formattedBookings, ...formattedMaintenance]);
+                } catch (err) {
+                    console.error('Помилка завантаження дат', err);
+                }
             }
         };
-
         loadRoomDates();
-        fetchData();
+        const interval = setInterval(loadRoomDates, 30000);
+        return () => {
+            clearInterval(interval);
+        };
     }, [form.roomId, isAdding]);
-
-    const toLocalISOString = (date: Date | null) => {
-        if (!date) return '';
-        const offset = date.getTimezoneOffset();
-        const localDate = new Date(date.getTime() - offset * 60 * 1000);
-        return localDate.toISOString().split('T')[0];
-    };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const hasOverlap = takenDates.some((period) => {
+            const pStart = new Date(period.start).getTime();
+            const pEnd = new Date(period.end).getTime();
+            const selStart = new Date(form.startDate).getTime();
+            const selEnd = new Date(form.endDate).getTime();
+            return selStart < pEnd && selEnd > pStart;
+        });
+        if (hasOverlap) {
+            return alert('Обраний період перетинається з існуючим бронюванням або ремонтом');
+        }
+
         try {
             if (editingId) {
                 await api.patch(`/rooms/meta/maintenance/${editingId}`, form);
@@ -127,22 +138,73 @@ export const MaintenancePage = () => {
         }
     };
 
+    const toLocalISOString = (date: Date | null) => {
+        if (!date) return '';
+        const offset = date.getTimezoneOffset();
+        const localDate = new Date(date.getTime() - offset * 60 * 1000);
+        return localDate.toISOString().split('T')[0];
+    };
+
     const getDayClassName = (date: Date) => {
-        const checkDate = new Date(date);
-        checkDate.setHours(0, 0, 0, 0);
+        const dateStr = toLocalISOString(date);
+        let isStart = false;
+        let isEnd = false;
+        let isBetween = false;
 
-        for (const period of takenDates) {
-            const start = new Date(period.start);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(period.end);
-            end.setHours(0, 0, 0, 0);
+        takenDates.forEach((period) => {
+            const startStr = toLocalISOString(new Date(period.start));
+            const endStr = toLocalISOString(new Date(period.end));
 
-            if (checkDate >= start && checkDate <= end) {
-                return period.type === 'maintenance' ? 'date-maintenance' : 'date-occupied';
-            }
-        }
+            if (dateStr === startStr) isStart = true;
+            else if (dateStr === endStr) isEnd = true;
+            else if (dateStr > startStr && dateStr < endStr) isBetween = true;
+        });
+
+        if (isStart && isEnd) return 'taken-split';
+        if (isBetween) return 'taken-full';
+        if (isStart) return 'taken-start';
+        if (isEnd) return 'taken-end';
+
         return '';
     };
+
+    const getDisabledDates = () => {
+        const disabled = new Set<string>();
+
+        takenDates.forEach((period) => {
+            const sStr = toLocalISOString(new Date(period.start));
+            const eStr = toLocalISOString(new Date(period.end));
+
+            // Блокуємо день, якщо він є заїздом і виїздом
+            if (takenDates.some((other) => toLocalISOString(new Date(other.end)) === sStr)) {
+                disabled.add(sStr);
+            }
+            if (takenDates.some((other) => toLocalISOString(new Date(other.start)) === eStr)) {
+                disabled.add(eStr);
+            }
+        });
+
+        return Array.from(disabled).map((dateStr) => new Date(dateStr));
+    };
+    const disabledDates = getDisabledDates();
+
+    const excludeIntervals = takenDates
+        .map((period) => {
+            const start = toLocalISOString(new Date(period.start));
+            const end = toLocalISOString(new Date(period.end));
+
+            const blockedStart = new Date(start);
+            blockedStart.setDate(blockedStart.getDate());
+
+            const blockedEnd = new Date(end);
+            blockedEnd.setDate(blockedEnd.getDate() - 1);
+
+            // Якщо бронь лише на 1 ніч, блокувати всередині нічого
+            if (blockedStart > blockedEnd) return null;
+
+            return { start: blockedStart, end: blockedEnd };
+        })
+        .filter(Boolean) as { start: Date; end: Date }[];
 
     if (loading)
         return (
@@ -238,13 +300,52 @@ export const MaintenancePage = () => {
                                         endDate={form.endDate ? new Date(form.endDate) : null}
                                         onChange={(update: [Date | null, Date | null]) => {
                                             const [start, end] = update;
+                                            if (start && end) {
+                                                const startStr = toLocalISOString(start);
+                                                const endStr = toLocalISOString(end);
+                                                if (startStr === endStr) {
+                                                    setForm({
+                                                        ...form,
+                                                        startDate: '',
+                                                        endDate: '',
+                                                    });
+                                                    return;
+                                                }
+                                                const isOverlapInside = takenDates.some(
+                                                    (period) => {
+                                                        const pStart = toLocalISOString(
+                                                            new Date(period.start),
+                                                        );
+                                                        const pEnd = toLocalISOString(
+                                                            new Date(period.end),
+                                                        );
+                                                        return (
+                                                            (pStart > startStr &&
+                                                                pStart < endStr) ||
+                                                            (pEnd > startStr && pEnd < endStr)
+                                                        );
+                                                    },
+                                                );
+
+                                                if (isOverlapInside) {
+                                                    setForm({
+                                                        ...form,
+                                                        startDate: '',
+                                                        endDate: '',
+                                                    });
+                                                    return;
+                                                }
+                                            }
                                             setForm({
                                                 ...form,
                                                 startDate: toLocalISOString(start),
                                                 endDate: toLocalISOString(end),
                                             });
                                         }}
+                                        minDate={new Date()}
                                         dayClassName={getDayClassName}
+                                        excludeDates={disabledDates}
+                                        excludeDateIntervals={excludeIntervals}
                                         locale="uk"
                                         disabled={!form.roomId}
                                         placeholderText={
@@ -252,18 +353,20 @@ export const MaintenancePage = () => {
                                                 ? 'Оберіть дати робіт...'
                                                 : 'Спочатку оберіть номер'
                                         }
-                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-primary text-sm font-bold"
+                                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-primary text-sm font-bold ${!form.roomId ? 'opacity-50' : ''}`}
                                     />
                                 </div>
 
                                 <div className="flex gap-4 mt-2 ml-1">
-                                    <div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400">
-                                        <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>{' '}
-                                        Гість у номері
+                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-slate-400">
+                                        <div className="w-2.5 h-2.5 bg-slate-200 rounded-sm"></div>
+                                        Зайнято / Ремонт
                                     </div>
-                                    <div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400">
-                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>{' '}
-                                        Інший ремонт
+                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-slate-400">
+                                        <div className="w-2.5 h-2.5 bg-white border border-slate-200 rounded-sm flex overflow-hidden">
+                                            <div className="w-1/2 bg-slate-200"></div>
+                                        </div>
+                                        Заїзд / Виїзд
                                     </div>
                                 </div>
                             </div>

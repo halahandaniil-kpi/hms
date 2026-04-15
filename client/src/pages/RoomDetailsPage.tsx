@@ -147,14 +147,11 @@ export const RoomDetailsPage = () => {
             }
         };
         fetchDates();
+        const interval = setInterval(fetchDates, 30000);
+        return () => {
+            clearInterval(interval);
+        };
     }, [bookingData.roomId]);
-
-    const toLocalISOString = (date: Date | null) => {
-        if (!date) return '';
-        const offset = date.getTimezoneOffset();
-        const localDate = new Date(date.getTime() - offset * 60 * 1000);
-        return localDate.toISOString().split('T')[0];
-    };
 
     // Функції для гортання слайдера
     const nextImage = () => {
@@ -176,6 +173,18 @@ export const RoomDetailsPage = () => {
 
         if (!bookingData.checkIn || !bookingData.checkOut) {
             setError('Будь ласка, оберіть період проживання на календарі');
+            return;
+        }
+
+        const hasOverlap = takenDates.some((period) => {
+            const pStart = new Date(period.start).getTime();
+            const pEnd = new Date(period.end).getTime();
+            const selStart = new Date(bookingData.checkIn).getTime();
+            const selEnd = new Date(bookingData.checkOut).getTime();
+            return selStart < pEnd && selEnd > pStart;
+        });
+        if (hasOverlap) {
+            setError('Обраний період перетинається з існуючим бронюванням або ремонтом');
             return;
         }
 
@@ -237,24 +246,74 @@ export const RoomDetailsPage = () => {
         }
     };
 
+    const toLocalISOString = (date: Date | null) => {
+        if (!date) return '';
+        const offset = date.getTimezoneOffset();
+        const localDate = new Date(date.getTime() - offset * 60 * 1000);
+        return localDate.toISOString().split('T')[0];
+    };
+
     // Функція для визначення класу кольору для кожного дня
     const getDayClassName = (date: Date) => {
-        // Обнуляємо час для точного порівняння дат
-        const checkDate = new Date(date);
-        checkDate.setHours(0, 0, 0, 0);
+        const dateStr = toLocalISOString(date);
+        let isStart = false;
+        let isEnd = false;
+        let isBetween = false;
 
-        for (const period of takenDates) {
-            const start = new Date(period.start);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(period.end);
-            end.setHours(0, 0, 0, 0);
+        takenDates.forEach((period) => {
+            const startStr = toLocalISOString(new Date(period.start));
+            const endStr = toLocalISOString(new Date(period.end));
 
-            if (checkDate >= start && checkDate <= end) {
-                return period.type === 'maintenance' ? 'date-maintenance' : 'date-occupied';
-            }
-        }
+            if (dateStr === startStr) isStart = true;
+            else if (dateStr === endStr) isEnd = true;
+            else if (dateStr > startStr && dateStr < endStr) isBetween = true;
+        });
+
+        if (isStart && isEnd) return 'taken-split';
+        if (isBetween) return 'taken-full';
+        if (isStart) return 'taken-start';
+        if (isEnd) return 'taken-end';
+
         return '';
     };
+
+    const getDisabledDates = () => {
+        const disabled = new Set<string>();
+
+        takenDates.forEach((period) => {
+            const sStr = toLocalISOString(new Date(period.start));
+            const eStr = toLocalISOString(new Date(period.end));
+
+            // Блокуємо день, якщо він є заїздом і виїздом
+            if (takenDates.some((other) => toLocalISOString(new Date(other.end)) === sStr)) {
+                disabled.add(sStr);
+            }
+            if (takenDates.some((other) => toLocalISOString(new Date(other.start)) === eStr)) {
+                disabled.add(eStr);
+            }
+        });
+
+        return Array.from(disabled).map((dateStr) => new Date(dateStr));
+    };
+    const disabledDates = getDisabledDates();
+
+    const excludeIntervals = takenDates
+        .map((period) => {
+            const start = toLocalISOString(new Date(period.start));
+            const end = toLocalISOString(new Date(period.end));
+
+            const blockedStart = new Date(start);
+            blockedStart.setDate(blockedStart.getDate());
+
+            const blockedEnd = new Date(end);
+            blockedEnd.setDate(blockedEnd.getDate() - 1);
+
+            // Якщо бронь лише на 1 ніч, блокувати всередині нічого
+            if (blockedStart > blockedEnd) return null;
+
+            return { start: blockedStart, end: blockedEnd };
+        })
+        .filter(Boolean) as { start: Date; end: Date }[];
 
     const formatImageUrl = (url: string) => {
         if (!url)
@@ -499,46 +558,85 @@ export const RoomDetailsPage = () => {
                                         <label className="text-[10px] font-black uppercase text-slate-400 ml-1">
                                             Період проживання
                                         </label>
-                                        <div className="relative flex gap-2">
-                                            <div className="relative w-full">
-                                                <Calendar
-                                                    className="absolute left-3 top-3 text-slate-400 z-10"
-                                                    size={18}
-                                                />
-                                                <DatePicker
-                                                    disabled={!bookingData.roomId}
-                                                    selectsRange={true}
-                                                    startDate={startDate}
-                                                    endDate={endDate}
-                                                    onChange={(
-                                                        update: [Date | null, Date | null],
-                                                    ) => {
-                                                        const [start, end] = update;
-                                                        setBookingData({
-                                                            ...bookingData,
-                                                            checkIn: toLocalISOString(start),
-                                                            checkOut: toLocalISOString(end),
-                                                        });
-                                                    }}
-                                                    minDate={new Date()}
-                                                    dayClassName={getDayClassName}
-                                                    locale="uk"
-                                                    placeholderText="Оберіть дати заїзду та виїзду"
-                                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-primary text-sm font-bold"
-                                                />
-                                            </div>
+                                        <div className="relative mt-1">
+                                            <Calendar
+                                                className="absolute left-3 top-3 text-slate-400 z-10"
+                                                size={18}
+                                            />
+                                            <DatePicker
+                                                disabled={!bookingData.roomId}
+                                                selectsRange={true}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                                onChange={(update: [Date | null, Date | null]) => {
+                                                    const [start, end] = update;
+                                                    if (start && end) {
+                                                        const startStr = toLocalISOString(start);
+                                                        const endStr = toLocalISOString(end);
+                                                        if (startStr === endStr) {
+                                                            setBookingData({
+                                                                ...bookingData,
+                                                                checkIn: '',
+                                                                checkOut: '',
+                                                            });
+                                                            return;
+                                                        }
+                                                        const isOverlapInside = takenDates.some(
+                                                            (period) => {
+                                                                const pStart = toLocalISOString(
+                                                                    new Date(period.start),
+                                                                );
+                                                                const pEnd = toLocalISOString(
+                                                                    new Date(period.end),
+                                                                );
+                                                                return (
+                                                                    (pStart > startStr &&
+                                                                        pStart < endStr) ||
+                                                                    (pEnd > startStr &&
+                                                                        pEnd < endStr)
+                                                                );
+                                                            },
+                                                        );
+
+                                                        if (isOverlapInside) {
+                                                            setBookingData({
+                                                                ...bookingData,
+                                                                checkIn: '',
+                                                                checkOut: '',
+                                                            });
+                                                            return;
+                                                        }
+                                                    }
+                                                    setBookingData({
+                                                        ...bookingData,
+                                                        checkIn: toLocalISOString(start),
+                                                        checkOut: toLocalISOString(end),
+                                                    });
+                                                }}
+                                                minDate={new Date()}
+                                                dayClassName={getDayClassName}
+                                                excludeDates={disabledDates}
+                                                excludeDateIntervals={excludeIntervals}
+                                                locale="uk"
+                                                placeholderText={
+                                                    bookingData.roomId
+                                                        ? 'Оберіть дати...'
+                                                        : 'Спочатку оберіть номер'
+                                                }
+                                                className={`w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-primary text-sm font-bold ${!bookingData.roomId ? 'opacity-50' : ''}`}
+                                            />
                                         </div>
                                     </div>
-
-                                    {/* Легенда кольорів */}
-                                    <div className="flex gap-4 mt-2">
-                                        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-                                            <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>{' '}
-                                            Зайнято
+                                    <div className="flex gap-4 mt-1 ml-1">
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                                            <div className="w-3 h-3 bg-slate-200 rounded-sm"></div>
+                                            Номер зайнятий / Ремонт
                                         </div>
-                                        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-                                            <div className="w-3 h-3 bg-red-500 rounded-full"></div>{' '}
-                                            Обслуговування
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                                            <div className="w-3 h-3 bg-white border border-slate-200 rounded-sm flex overflow-hidden">
+                                                <div className="w-1/2 bg-slate-200"></div>
+                                            </div>
+                                            Дні заїзду / виїзду
                                         </div>
                                     </div>
                                 </div>
