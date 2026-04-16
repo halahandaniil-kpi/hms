@@ -23,13 +23,6 @@ enum BookingStatus {
     CANCELLED
 }
 
-enum RoomStatus {
-    AVAILABLE
-    OCCUPIED
-    MAINTENANCE
-    CLEANING
-}
-
 enum PaymentStatus {
     PENDING
     COMPLETED
@@ -74,10 +67,9 @@ model BedType {
 }
 
 model Room {
-    id         Int        @id @default(autoincrement())
-    roomNumber String     @unique
+    id         Int    @id @default(autoincrement())
+    roomNumber String @unique
     floor      Int?
-    status     RoomStatus @default(AVAILABLE)
 
     roomTypeId Int
     roomType   RoomType @relation(fields: [roomTypeId], references: [id])

@@ -41,7 +41,6 @@ interface Review {
 interface PhysicalRoom {
     id: number;
     roomNumber: string;
-    status: string;
 }
 
 interface RoomType {
@@ -539,15 +538,8 @@ export const RoomDetailsPage = () => {
                                     >
                                         <option value="">Оберіть № кімнати...</option>
                                         {roomType.rooms.map((r) => (
-                                            <option
-                                                key={r.id}
-                                                value={r.id}
-                                                disabled={r.status !== 'AVAILABLE'}
-                                            >
+                                            <option key={r.id} value={r.id}>
                                                 №{r.roomNumber}{' '}
-                                                {r.status !== 'AVAILABLE'
-                                                    ? '(На обслуговуванні)'
-                                                    : ''}
                                             </option>
                                         ))}
                                     </select>

@@ -53,7 +53,6 @@ interface ApiMaintenance {
 interface PhysicalRoom {
     id: number;
     roomNumber: string;
-    status: string;
 }
 
 interface DashboardRoomType {
@@ -856,15 +855,8 @@ export const AdminDashboardPage = () => {
                                         roomTypes
                                             .find((t) => t.id.toString() === selectedCategoryId)
                                             ?.rooms.map((r) => (
-                                                <option
-                                                    key={r.id}
-                                                    value={r.id}
-                                                    disabled={r.status !== 'AVAILABLE'}
-                                                >
+                                                <option key={r.id} value={r.id}>
                                                     №{r.roomNumber}{' '}
-                                                    {r.status !== 'AVAILABLE'
-                                                        ? `(${r.status})`
-                                                        : ''}
                                                 </option>
                                             ))}
                                 </select>
