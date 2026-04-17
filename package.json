@@ -1,37 +1,38 @@
 {
-    "name": "hms",
-    "version": "1.0.0",
-    "description": "",
-    "main": "index.js",
-    "type": "module",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "install-all": "npm install && cd client && npm install && cd ../server && npm install",
-        "client": "cd client && npm run dev",
-        "server": "cd server && npm run dev",
-        "lint": "npx eslint .",
-        "prepare": "husky install"
-    },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "devDependencies": {
-        "@commitlint/cli": "^20.5.0",
-        "@commitlint/config-conventional": "^20.5.0",
-        "@eslint/js": "^10.0.1",
-        "eslint": "^10.2.1",
-        "eslint-config-prettier": "^10.1.8",
-        "globals": "^17.5.0",
-        "husky": "^8.0.0",
-        "lint-staged": "^16.4.0",
-        "prettier": "^3.8.3",
-        "typescript": "^6.0.3",
-        "typescript-eslint": "^8.58.2"
-    },
-    "lint-staged": {
-        "*.{ts,tsx,js}": [
-            "eslint --fix",
-            "prettier --write"
-        ]
-    }
+  "name": "hms",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install",
+    "client": "cd client && npm run dev",
+    "server": "cd server && npm run dev",
+    "lint": "npx eslint .",
+    "prepare": "husky install"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0",
+    "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.5.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.58.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  }
 }

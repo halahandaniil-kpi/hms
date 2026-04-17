@@ -13,3 +13,10 @@ prisma/migrations/
 
 server/public/uploads/*
 !server/public/uploads/.gitkeep
+
+server/reports/
+server/test-results/
+/playwright-report/
+server/blob-report/
+server/playwright/.cache/
+server/playwright/.auth/
