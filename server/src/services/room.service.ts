@@ -70,7 +70,7 @@ export const getRoomTypeById = async (id: number) => {
             bedType: true,
             images: { orderBy: { isPrimary: 'desc' } },
             rooms: {
-                select: { id: true, roomNumber: true, status: true },
+                select: { id: true, roomNumber: true },
             },
         },
     });

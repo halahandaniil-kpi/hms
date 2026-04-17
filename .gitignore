@@ -20,3 +20,5 @@ server/test-results/
 server/blob-report/
 server/playwright/.cache/
 server/playwright/.auth/
+test-results/.last-run.json
+server/server@1.0.0
