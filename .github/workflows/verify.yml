@@ -14,6 +14,8 @@ jobs:
         steps:
             # Копіюємо код у віртуальну машину
             - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
             # Встановлюємо Node.js
             - name: Setup Node.js
@@ -26,9 +28,13 @@ jobs:
             - name: Install Root Dependencies
               run: npm install
 
-            # Перевірка стилю комітів (Conventional Commits)
+            # Перевірка повідомлень комітів
             - name: Check Commit Message
-              uses: wagoid/commitlint-github-action@v5
+              if: github.event_name == 'pull_request'
+              run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+            - name: Check Last Commit Message (on push)
+              if: github.event_name == 'push'
+              run: npx commitlint --from HEAD~1 --to HEAD --verbose
 
             # --- ПЕРЕВІРКА BACKEND ---
             - name: Install Server Dependencies
