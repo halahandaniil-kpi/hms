@@ -50,6 +50,8 @@ describe('BookingService - Unit Tests', () => {
             roomType: { basePrice: 1000 },
         } as any);
 
+        jest.spyOn(prisma.maintenanceLog, 'findFirst').mockResolvedValue(null);
+
         // Імітуємо знайдений перетин
         jest.spyOn(prisma.booking, 'findFirst').mockResolvedValue({ id: 99 } as any);
 
