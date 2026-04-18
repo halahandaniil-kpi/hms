@@ -1,0 +1,56 @@
+name: CI Verification
+
+# Коли запускати: при кожному push або Pull Request у гілку main
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+jobs:
+    verify:
+        runs-on: ubuntu-latest # Запускаємо на віртуальній машині Linux
+
+        steps:
+            # Копіюємо код у віртуальну машину
+            - uses: actions/checkout@v4
+
+            # Встановлюємо Node.js
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+
+            # Встановлюємо корневі залежності
+            - name: Install Root Dependencies
+              run: npm install
+
+            # Перевірка стилю комітів (Conventional Commits)
+            - name: Check Commit Message
+              uses: wagoid/commitlint-github-action@v5
+
+            # --- ПЕРЕВІРКА BACKEND ---
+            - name: Install Server Dependencies
+              run: cd server && npm install
+
+            - name: Lint Server
+              run: cd server && npx eslint .
+
+            - name: Build Server
+              run: cd server && npm run build
+              env:
+                  DATABASE_URL: 'postgresql://user:pass@localhost:5432/db'
+
+            - name: Run Server Unit Tests
+              run: cd server && npm test
+
+            # --- ПЕРЕВІРКА FRONTEND ---
+            - name: Install Client Dependencies
+              run: cd client && npm install
+
+            - name: Lint Client
+              run: npx eslint client/src
+
+            - name: Build Client
+              run: cd client && npm run build
