@@ -17,4 +17,6 @@ export default {
             },
         ],
     },
+    testMatch: ['**/src/__tests__/**/*.test.ts'], // Шукати тести тільки в src
+    modulePathIgnorePatterns: ['<rootDir>/dist/'], // Ігнорувати компільовані файли
 };
